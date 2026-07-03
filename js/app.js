@@ -11,7 +11,7 @@ import {
   updateTaskOrder
 } from "../firebase/firestore.js";
 
-const APP_VERSION = "v0.3.5";
+const APP_VERSION = "v0.3.3";
 
 const taskTitleInput = document.querySelector("#task-title");
 const taskNotesInput = document.querySelector("#task-notes");
