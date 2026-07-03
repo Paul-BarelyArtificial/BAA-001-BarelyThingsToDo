@@ -1,0 +1,5 @@
+Copyright (c) 2026 Barely Artificial.
+
+All rights reserved.
+
+This project is provided as a Barely Artificial internal/reference application. Do not copy, redistribute or reuse commercially without permission from Barely Artificial.

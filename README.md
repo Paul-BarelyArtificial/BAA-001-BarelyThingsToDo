@@ -1,55 +1,25 @@
-# Barely Artificial • To Do Tomorrow
+# To Do Tomorrow
 
-> One thing at a time.
+**To Do Tomorrow** is a calm, minimalist task app by **Barely Artificial**.
 
-A calm, minimalist task manager built for personal use.
+It is designed to do one thing well: capture the things that need doing tomorrow, keep them in the order that matters, and sync them across devices.
 
-The aim of this project is to create a beautiful, distraction-free application that makes it quick and easy to capture and organise tomorrow's tasks. It deliberately avoids unnecessary features such as priorities, categories and complex workflows.
+Current release: **v1.0.0**
 
 ---
 
-## Current Status
+## Features
 
-🚧 In Development
-
-Current version: **v0.3.6 – Cloud Sync + Mobile Reordering**
-
-### Features
-
-- Dark theme
+- Google sign-in
+- Cloud sync using Firebase Firestore
+- Add tasks with optional notes
+- Clear tasks when no longer needed
+- Drag-and-drop task ordering
+- Mobile-friendly reordering using SortableJS
+- Responsive dark interface
 - Barely Artificial branding
-- Add task
-- Optional notes
-- Character counter
-- Press Enter to add
-- Local browser storage
-- Remove task
-- Undo remove
-- Responsive layout
-
----
-
-## Planned Features
-
-### Version 0.2
-
-- Drag and drop task ordering
-
-### Version 0.3
-
-- Firebase authentication
-- Cloud synchronisation
-- Persistent sign-in
-
-### Version 0.4
-
-- Progressive Web App (PWA)
-- Offline support
-- Automatic synchronisation
-
-### Version 1.0
-
-The first production-ready release.
+- Installable as a Progressive Web App
+- Version footer for deployment checking
 
 ---
 
@@ -57,47 +27,56 @@ The first production-ready release.
 
 - HTML5
 - CSS3
-- JavaScript (Vanilla)
-- Git
-- GitHub
+- JavaScript ES Modules
+- Firebase Authentication
+- Firebase Firestore
 - GitHub Pages
-- Firebase (planned)
+- SortableJS
 
 ---
 
 ## Running Locally
 
-Clone the repository and open `index.html` in your browser.
+Open `index.html` in a browser for simple UI testing.
 
-No build process or package installation is required.
-
----
-
-## Development Philosophy
-
-Every feature must answer one question:
-
-> Does this help me capture and organise what I need to do tomorrow as quickly as possible?
-
-If not, it probably doesn't belong.
-
-The project intentionally favours simplicity over features.
+For Firebase authentication and Firestore testing, use the deployed GitHub Pages URL or run through a local web server. Firebase Authentication requires an authorised domain.
 
 ---
 
-## Roadmap
+## Deployment
 
-- [x] Create project
-- [x] Local prototype
-- [ ] Drag and drop ordering
-- [ ] Cloud synchronisation
-- [ ] Progressive Web App
-- [ ] Version 1.0 release
+The app is deployed using **GitHub Pages** from the `main` branch and root folder.
+
+Release checklist:
+
+1. Test locally where possible.
+2. Update the version number.
+3. Commit changes.
+4. Push to GitHub.
+5. Wait for GitHub Pages deployment to complete.
+6. Hard refresh the live app.
+7. Confirm the footer version matches the release.
+
+---
+
+## Firebase
+
+The app uses:
+
+- Firebase Authentication for Google sign-in
+- Firestore for cloud task storage
+- Firestore security rules to restrict access to the signed-in user's own task collection
+
+Task data is stored under:
+
+```text
+users/{userId}/tasks/{taskId}
+```
 
 ---
 
 ## Author
 
-Created by **Barely Artificial**
+Built by **Barely Artificial**.
 
 https://www.barelyartificial.com
