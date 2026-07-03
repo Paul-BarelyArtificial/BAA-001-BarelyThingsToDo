@@ -199,10 +199,10 @@ textarea:focus {
 }
 
 .drag-handle {
-  touch-action: none;
+  padding-top: 2px;
+  color: var(--muted);
+  cursor: grab;
   user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
 }
 
 .task-content h2 {

@@ -12,7 +12,7 @@ The aim of this project is to create a beautiful, distraction-free application t
 
 🚧 In Development
 
-Current version: **v0.1 – Local Prototype**
+Current version: **v0.3.6 – Cloud Sync + Mobile Reordering**
 
 ### Features
 

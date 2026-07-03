@@ -11,7 +11,7 @@ import {
   updateTaskOrder
 } from "../firebase/firestore.js";
 
-const APP_VERSION = "v0.3.3";
+const APP_VERSION = "v0.3.6";
 
 const taskTitleInput = document.querySelector("#task-title");
 const taskNotesInput = document.querySelector("#task-notes");
@@ -37,7 +37,6 @@ function renderTasks() {
   tasks.forEach((task) => {
     const item = document.createElement("li");
     item.className = "task-card";
-    item.draggable = true;
     item.dataset.id = task.id;
 
     item.innerHTML = `
@@ -200,9 +199,21 @@ taskList.addEventListener("click", (event) => {
   clearTask(item.dataset.id);
 });
 
-taskList.addEventListener("dragstart", handleDragStart);
-taskList.addEventListener("dragend", handleDragEnd);
-taskList.addEventListener("dragover", handleDragOver);
+if (window.Sortable) {
+  Sortable.create(taskList, {
+    handle: ".drag-handle",
+    animation: 150,
+    delayOnTouchOnly: true,
+    delay: 150,
+    onEnd: async () => {
+      if (!currentUser) return;
+      saveTaskOrderFromDom();
+      await updateTaskOrder(currentUser.uid, tasks);
+    }
+  });
+} else {
+  console.warn("SortableJS did not load. Task reordering is unavailable.");
+}
 
 signInButton.addEventListener("click", async () => {
   try {
