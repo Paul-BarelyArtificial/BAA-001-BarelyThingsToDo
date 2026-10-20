@@ -10,6 +10,8 @@
   --border: rgba(244, 247, 251, 0.12);
   --danger: #ff7a7a;
   --shadow: 0 20px 60px rgba(0, 0, 0, 0.32);
+  --priority-red: #ef4444;
+  --priority-amber: #f5a623;
 }
 
 * {
@@ -288,6 +290,67 @@ textarea:focus {
 .task-card.dragging {
   opacity: 0.65;
   border-color: var(--accent);
+}
+
+.task-card[data-priority="red"] {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.task-card[data-priority="amber"] {
+  border-color: rgba(245, 166, 35, 0.5);
+}
+
+.task-card[data-priority="blue"] {
+  border-color: rgba(47, 185, 237, 0.3);
+}
+
+.task-card[data-priority="red"]:hover {
+  border-color: var(--priority-red);
+}
+
+.task-card[data-priority="amber"]:hover {
+  border-color: var(--priority-amber);
+}
+
+.task-card[data-priority="blue"]:hover {
+  border-color: var(--accent);
+}
+
+.priority-picker {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.priority-dot {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+}
+
+.priority-dot[data-priority="red"] {
+  background: var(--priority-red);
+  color: var(--priority-red);
+}
+
+.priority-dot[data-priority="amber"] {
+  background: var(--priority-amber);
+  color: var(--priority-amber);
+}
+
+.priority-dot[data-priority="blue"] {
+  background: var(--accent);
+  color: var(--accent);
+}
+
+.priority-dot:hover {
+  transform: scale(1.12);
+}
+
+.priority-dot.selected {
+  box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px currentColor;
 }
 
 .drag-handle {

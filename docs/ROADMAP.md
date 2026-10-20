@@ -137,6 +137,30 @@ right). Couldn't fully exercise the real click → Firestore `updateTask`
 → re-render path without signing in — same category of thing that's
 needed Paul's own sign-in to confirm every round so far.
 
+### v1.4.0 — Decorative priority colors (Red/Amber/Blue) 🔨
+A card's outline color now signals Red (High) / Amber (Medium) / Blue
+(everything else, default) — purely visual, as specified: doesn't sort,
+filter, or group the list, and order in the list is still the only real
+priority.
+- Data model: `priority` field (`red` | `amber` | `blue`) on each task,
+  defaulting to `blue` — `firebase/firestore.js`'s `saveTask()` always
+  writes it; legacy tasks without the field render as `blue` via
+  `task.priority || "blue"`.
+- New tasks: a three-dot color picker in the add form, `blue`
+  pre-selected; resets to `blue` after each add (the choice is per-task,
+  not a sticky default).
+- Existing tasks: the same three-dot picker inside the inline edit form
+  from v1.3.2, pre-selected to the task's current color.
+- Picking a color updates only the dot states and (for new tasks) nothing
+  else live; for the edit form it's tracked in the same draft state as
+  title/notes so it survives re-renders without needing a full redraw.
+Verified locally: dot picker selection toggling confirmed interactively
+in the add form; card outline colors (red/amber/blue, all three
+distinguishable against the dark theme) confirmed via injected mock
+cards for both read-only and editing states. Still 🔨 pending: the full
+add/edit → Firestore → re-render path with a real signed-in account,
+same as every round so far.
+
 ## Backlog / ideas
 
 - **Move items between My List and Company List, plus a "with" (assignee)
@@ -184,24 +208,10 @@ needed Paul's own sign-in to confirm every round so far.
   for sharing or backup without introducing any structure beyond what's
   already there.
 
-- **Decorative priority color on each card.** A card's outline color
-  signals Red (High) / Amber (Medium) / Blue (everything else, default).
-  Purely visual — doesn't sort, filter, or group the list; order in the
-  list is still the only real priority (see Product philosophy in
-  `AGENTS.md`). Data model: add a `priority` field (`red` | `amber` |
-  `blue`) to each task, defaulting to `blue`.
-  - *New items*: a row of three small color-dot buttons in the add form,
-    `blue` pre-selected, tap/click red or amber to override before adding.
-  - *Existing ("legacy") items*: expose the same three-dot picker in the
-    edit-item form (v1.3.0 — opening a card to edit title/notes is the
-    natural place to also change its color), rather than adding a separate
-    edit mode just for color.
-
 - **Top-priority summary paragraph near the top of the UI.** Long-term
-  item, depends on the priority-color feature above landing first. Looks at
-  all Red items, then all Amber items, then the highest (first-ordered) 5
-  Blue items, and renders a readable paragraph of what needs doing.
-  Two-phase, by design:
+  item. Looks at all Red items, then all Amber items, then the highest
+  (first-ordered) 5 Blue items, and renders a readable paragraph of what
+  needs doing. Two-phase, by design:
   - *Phase 1 (do first)*: templated, no AI. Plain JS string-building from
     the selected items — no backend, no API cost, stays entirely within
     the current static-site architecture.

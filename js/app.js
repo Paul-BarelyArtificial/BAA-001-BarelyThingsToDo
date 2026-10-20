@@ -5,7 +5,7 @@ import {
   linkCompanyEmail,
   signOutUser,
   watchAuth
-} from "../firebase/auth.js?v=1.3.2";
+} from "../firebase/auth.js?v=1.4.0";
 
 import {
   personalTasksCollection,
@@ -15,14 +15,15 @@ import {
   deleteTask as deleteCloudTask,
   updateTask as updateCloudTask,
   updateTaskOrder
-} from "../firebase/firestore.js?v=1.3.2";
+} from "../firebase/firestore.js?v=1.4.0";
 
-const APP_VERSION = "v1.3.2";
+const APP_VERSION = "v1.4.0";
 const COMPANY_EMAIL_DOMAIN = "barelyartificial.com";
 
 const taskTitleInput = document.querySelector("#task-title");
 const taskNotesInput = document.querySelector("#task-notes");
 const toggleNotesButton = document.querySelector("#toggle-notes");
+const newPriorityPicker = document.querySelector("#new-priority-picker");
 const addTaskButton = document.querySelector("#add-task");
 const taskList = document.querySelector("#task-list");
 const emptyState = document.querySelector("#empty-state");
@@ -50,7 +51,9 @@ let draggedTaskId = null;
 let editingTaskId = null;
 let editDraftTitle = "";
 let editDraftNotes = "";
+let editDraftPriority = "blue";
 let editNotesOpen = false;
+let newTaskPriority = "blue";
 
 function hasCompanyAccess(user) {
   if (!user || !user.email || !user.emailVerified) return false;
@@ -160,6 +163,7 @@ function renderTasks() {
 
 function renderReadOnlyCard(item, task) {
   item.className = "task-card";
+  item.dataset.priority = task.priority || "blue";
 
   item.innerHTML = `
     <span class="drag-handle" aria-hidden="true">⋮⋮</span>
@@ -181,6 +185,12 @@ function renderEditingCard(item) {
     <span class="drag-handle" aria-hidden="true">⋮⋮</span>
     <div class="task-content task-edit-form">
       <input class="edit-title-input" type="text" maxlength="100" autocomplete="off" />
+
+      <div class="priority-picker" role="radiogroup" aria-label="Priority">
+        <button class="priority-dot" type="button" data-priority="red" aria-label="High priority"></button>
+        <button class="priority-dot" type="button" data-priority="amber" aria-label="Medium priority"></button>
+        <button class="priority-dot" type="button" data-priority="blue" aria-label="Default priority"></button>
+      </div>
 
       <div class="edit-toolbar">
         <button class="edit-toggle-notes text-button" type="button">
@@ -207,12 +217,17 @@ function renderEditingCard(item) {
 
   const notesInput = item.querySelector(".edit-notes-input");
   notesInput.value = editDraftNotes;
+
+  item.querySelectorAll(".priority-dot").forEach((dot) => {
+    dot.classList.toggle("selected", dot.dataset.priority === editDraftPriority);
+  });
 }
 
 function enterEditMode(task) {
   editingTaskId = task.id;
   editDraftTitle = task.title;
   editDraftNotes = task.notes || "";
+  editDraftPriority = task.priority || "blue";
   editNotesOpen = Boolean(task.notes);
 
   renderTasks();
@@ -232,6 +247,7 @@ function exitEditMode() {
   editingTaskId = null;
   editDraftTitle = "";
   editDraftNotes = "";
+  editDraftPriority = "blue";
   editNotesOpen = false;
 
   renderTasks();
@@ -246,8 +262,20 @@ async function saveEditedTask() {
   const tasksRef = currentTasksRef();
   if (!tasksRef || !editingTaskId) return;
 
-  await updateCloudTask(tasksRef, editingTaskId, { title, notes });
+  await updateCloudTask(tasksRef, editingTaskId, {
+    title,
+    notes,
+    priority: editDraftPriority
+  });
   exitEditMode();
+}
+
+function setNewTaskPriority(priority) {
+  newTaskPriority = priority;
+
+  newPriorityPicker.querySelectorAll(".priority-dot").forEach((dot) => {
+    dot.classList.toggle("selected", dot.dataset.priority === priority);
+  });
 }
 
 async function addTask() {
@@ -265,12 +293,14 @@ async function addTask() {
 
   await saveCloudTask(tasksRef, {
     title,
-    notes
+    notes,
+    priority: newTaskPriority
   });
 
   taskTitleInput.value = "";
   taskNotesInput.value = "";
   charCount.textContent = "0 / 100";
+  setNewTaskPriority("blue");
   taskTitleInput.focus();
 }
 
@@ -393,6 +423,13 @@ taskTitleInput.addEventListener("keydown", (event) => {
 
 toggleNotesButton.addEventListener("click", toggleNotes);
 
+newPriorityPicker.addEventListener("click", (event) => {
+  const dot = event.target.closest(".priority-dot");
+  if (!dot) return;
+
+  setNewTaskPriority(dot.dataset.priority);
+});
+
 taskList.addEventListener("click", (event) => {
   const clearButton = event.target.closest(".clear-button");
   if (clearButton) {
@@ -412,6 +449,17 @@ taskList.addEventListener("click", (event) => {
   const saveEditButton = event.target.closest(".save-edit-button");
   if (saveEditButton) {
     saveEditedTask();
+    return;
+  }
+
+  const priorityDot = event.target.closest(".priority-dot");
+  if (priorityDot) {
+    editDraftPriority = priorityDot.dataset.priority;
+
+    const item = priorityDot.closest(".task-card");
+    item?.querySelectorAll(".priority-dot").forEach((dot) => {
+      dot.classList.toggle("selected", dot.dataset.priority === editDraftPriority);
+    });
     return;
   }
 

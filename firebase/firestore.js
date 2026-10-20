@@ -9,7 +9,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
-import { app } from "./config.js?v=1.3.2";
+import { app } from "./config.js?v=1.4.0";
 
 export const db = getFirestore(app);
 
@@ -44,6 +44,7 @@ export async function saveTask(tasksRef, task) {
   await addDoc(tasksRef, {
     title: task.title,
     notes: task.notes,
+    priority: task.priority || "blue",
     order: Date.now(),
     createdAt: serverTimestamp()
   });
