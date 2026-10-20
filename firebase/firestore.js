@@ -13,12 +13,18 @@ import { app } from "./config.js";
 
 export const db = getFirestore(app);
 
-function tasksCollection(userId) {
+export const COMPANY_ID = "barely-artificial";
+
+export function personalTasksCollection(userId) {
   return collection(db, "users", userId, "tasks");
 }
 
-export function watchTasks(userId, callback) {
-  return onSnapshot(tasksCollection(userId), (snapshot) => {
+export function companyTasksCollection() {
+  return collection(db, "companies", COMPANY_ID, "tasks");
+}
+
+export function watchTasks(tasksRef, callback) {
+  return onSnapshot(tasksRef, (snapshot) => {
     const tasks = snapshot.docs.map((document) => ({
       id: document.id,
       ...document.data()
@@ -34,8 +40,8 @@ export function watchTasks(userId, callback) {
   });
 }
 
-export async function saveTask(userId, task) {
-  await addDoc(tasksCollection(userId), {
+export async function saveTask(tasksRef, task) {
+  await addDoc(tasksRef, {
     title: task.title,
     notes: task.notes,
     order: Date.now(),
@@ -43,13 +49,13 @@ export async function saveTask(userId, task) {
   });
 }
 
-export async function deleteTask(userId, taskId) {
-  await deleteDoc(doc(db, "users", userId, "tasks", taskId));
+export async function deleteTask(tasksRef, taskId) {
+  await deleteDoc(doc(tasksRef, taskId));
 }
 
-export async function updateTaskOrder(userId, tasks) {
+export async function updateTaskOrder(tasksRef, tasks) {
   const updates = tasks.map((task, index) => {
-    return updateDoc(doc(db, "users", userId, "tasks", task.id), {
+    return updateDoc(doc(tasksRef, task.id), {
       order: index
     });
   });

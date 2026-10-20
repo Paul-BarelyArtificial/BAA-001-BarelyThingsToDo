@@ -25,16 +25,21 @@ the live app moved from
 URL now 404s; any bookmarks or installed PWAs need re-pointing at the new
 URL (see `docs/HOSTING.md`).
 
-## Backlog / ideas
+### v1.1.0 — Personal + shared company list 🔨
+Added a "My List" / "Company List" switcher. `firebase/firestore.js` is now
+scope-agnostic (works against any Firestore collection reference); the
+company list lives at `companies/barely-artificial/tasks/{taskId}`,
+alongside the existing per-user `users/{userId}/tasks/{taskId}`. Access
+control: the Company List tab only appears, and only works, for accounts
+signed in with a verified `@barelyartificial.com` email — enforced both in
+the UI (tab hidden otherwise) and in `firestore.rules` (so it can't be
+bypassed client-side). Added `.claude/launch.json` for local dev preview.
+Still 🔨 pending: `firestore.rules` deployed to production (drafted, not
+yet applied — see commit message / chat for the explicit go-ahead), and
+sign-in-gated behavior (tab switching, cross-device sync) verified live
+with real Google accounts rather than just the signed-out UI.
 
-- **Personal + shared company list.** Paul and Steve both need their own
-  personal list plus a shared Barely Artificial company list they both see
-  and edit. Likely shape: a second Firestore collection (e.g.
-  `companies/barely-artificial/tasks/{taskId}`) alongside the existing
-  per-user `users/{userId}/tasks/{taskId}`, with security rules scoped to
-  the two UIDs, and a UI toggle between "My List" / "Company List." Doesn't
-  require any hosting/architecture change — it's a data-model + UI change
-  within the current Firebase stack.
+## Backlog / ideas
 
 - **Modernize the UI + rename the app to "Barely Things To Do."** Current
   UI is the original v1.0.0 look; wants a visual refresh. Rename touches:

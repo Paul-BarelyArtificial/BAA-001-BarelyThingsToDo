@@ -14,7 +14,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/png" href="images/favicon-32.png" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=1.0.0" />
+  <link rel="stylesheet" href="css/styles.css?v=1.1.0" />
 </head>
 <body>
   <main class="app-shell">
@@ -33,6 +33,27 @@
         <button id="sign-out" class="hidden" type="button">Sign out</button>
       </div>
     </header>
+
+    <div id="list-switcher" class="list-switcher" role="tablist" aria-label="Choose list">
+      <button
+        id="list-tab-personal"
+        class="list-tab active"
+        type="button"
+        role="tab"
+        aria-selected="true"
+      >
+        My List
+      </button>
+      <button
+        id="list-tab-company"
+        class="list-tab hidden"
+        type="button"
+        role="tab"
+        aria-selected="false"
+      >
+        Company List
+      </button>
+    </div>
 
     <section class="task-entry" aria-label="Add a task">
       <label for="task-title">What needs doing tomorrow?</label>
@@ -73,11 +94,11 @@
     <footer class="app-footer">
       <span>Barely Artificial</span>
       <span aria-hidden="true">•</span>
-      <span id="app-version">v1.0.0</span>
+      <span id="app-version">v1.1.0</span>
     </footer>
   </main>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-  <script type="module" src="js/app.js?v=1.0.0"></script>
+  <script type="module" src="js/app.js?v=1.1.0"></script>
 </body>
 </html>

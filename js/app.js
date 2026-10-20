@@ -5,13 +5,16 @@ import {
 } from "../firebase/auth.js";
 
 import {
+  personalTasksCollection,
+  companyTasksCollection,
   watchTasks,
   saveTask as saveCloudTask,
   deleteTask as deleteCloudTask,
   updateTaskOrder
 } from "../firebase/firestore.js";
 
-const APP_VERSION = "v1.0.0";
+const APP_VERSION = "v1.1.0";
+const COMPANY_EMAIL_DOMAIN = "barelyartificial.com";
 
 const taskTitleInput = document.querySelector("#task-title");
 const taskNotesInput = document.querySelector("#task-notes");
@@ -24,11 +27,60 @@ const signInButton = document.querySelector("#sign-in");
 const signOutButton = document.querySelector("#sign-out");
 const authStatus = document.querySelector("#auth-status");
 const appVersion = document.querySelector("#app-version");
+const listTabPersonal = document.querySelector("#list-tab-personal");
+const listTabCompany = document.querySelector("#list-tab-company");
 
 let tasks = [];
 let currentUser = null;
+let currentScope = "personal";
 let unsubscribeTasks = null;
 let draggedTaskId = null;
+
+function hasCompanyAccess(user) {
+  if (!user || !user.email || !user.emailVerified) return false;
+  return user.email.toLowerCase().endsWith(`@${COMPANY_EMAIL_DOMAIN}`);
+}
+
+function currentTasksRef() {
+  if (!currentUser) return null;
+
+  return currentScope === "company"
+    ? companyTasksCollection()
+    : personalTasksCollection(currentUser.uid);
+}
+
+function subscribeToCurrentList() {
+  if (unsubscribeTasks) {
+    unsubscribeTasks();
+    unsubscribeTasks = null;
+  }
+
+  const tasksRef = currentTasksRef();
+  if (!tasksRef) {
+    tasks = [];
+    renderTasks();
+    return;
+  }
+
+  unsubscribeTasks = watchTasks(tasksRef, (cloudTasks) => {
+    tasks = cloudTasks;
+    renderTasks();
+  });
+}
+
+function setScope(scope) {
+  if (scope === currentScope) return;
+  if (scope === "company" && !hasCompanyAccess(currentUser)) return;
+
+  currentScope = scope;
+
+  listTabPersonal.classList.toggle("active", scope === "personal");
+  listTabPersonal.setAttribute("aria-selected", scope === "personal");
+  listTabCompany.classList.toggle("active", scope === "company");
+  listTabCompany.setAttribute("aria-selected", scope === "company");
+
+  subscribeToCurrentList();
+}
 
 function renderTasks() {
   taskList.innerHTML = "";
@@ -58,12 +110,14 @@ async function addTask() {
 
   if (!title) return;
 
-  if (!currentUser) {
+  const tasksRef = currentTasksRef();
+
+  if (!tasksRef) {
     alert("Please sign in before adding tasks.");
     return;
   }
 
-  await saveCloudTask(currentUser.uid, {
+  await saveCloudTask(tasksRef, {
     title,
     notes
   });
@@ -75,7 +129,8 @@ async function addTask() {
 }
 
 async function clearTask(id) {
-  if (!currentUser) return;
+  const tasksRef = currentTasksRef();
+  if (!tasksRef) return;
 
   const item = taskList.querySelector(`[data-id="${id}"]`);
   if (!item) return;
@@ -83,7 +138,7 @@ async function clearTask(id) {
   item.classList.add("clearing");
 
   setTimeout(async () => {
-    await deleteCloudTask(currentUser.uid, id);
+    await deleteCloudTask(tasksRef, id);
   }, 180);
 }
 
@@ -113,13 +168,14 @@ function handleDragStart(event) {
 
 async function handleDragEnd(event) {
   const item = event.target.closest(".task-card");
-  if (!item || !currentUser) return;
+  const tasksRef = currentTasksRef();
+  if (!item || !tasksRef) return;
 
   item.classList.remove("dragging");
   draggedTaskId = null;
 
   saveTaskOrderFromDom();
-  await updateTaskOrder(currentUser.uid, tasks);
+  await updateTaskOrder(tasksRef, tasks);
 }
 
 function handleDragOver(event) {
@@ -206,14 +262,18 @@ if (window.Sortable) {
     delayOnTouchOnly: true,
     delay: 150,
     onEnd: async () => {
-      if (!currentUser) return;
+      const tasksRef = currentTasksRef();
+      if (!tasksRef) return;
       saveTaskOrderFromDom();
-      await updateTaskOrder(currentUser.uid, tasks);
+      await updateTaskOrder(tasksRef, tasks);
     }
   });
 } else {
   console.warn("SortableJS did not load. Task reordering is unavailable.");
 }
+
+listTabPersonal.addEventListener("click", () => setScope("personal"));
+listTabCompany.addEventListener("click", () => setScope("company"));
 
 signInButton.addEventListener("click", async () => {
   try {
@@ -228,32 +288,37 @@ signOutButton.addEventListener("click", async () => {
   await signOutUser();
 });
 
+function resetToPersonalTab() {
+  currentScope = "personal";
+  listTabPersonal.classList.add("active");
+  listTabPersonal.setAttribute("aria-selected", "true");
+  listTabCompany.classList.remove("active");
+  listTabCompany.setAttribute("aria-selected", "false");
+}
+
 watchAuth((user) => {
-  if (unsubscribeTasks) {
-    unsubscribeTasks();
-    unsubscribeTasks = null;
-  }
+  currentUser = user;
 
   if (user) {
-    currentUser = user;
-
     authStatus.textContent = `Hi ${user.displayName}`;
     signInButton.classList.add("hidden");
     signOutButton.classList.remove("hidden");
 
-    unsubscribeTasks = watchTasks(currentUser.uid, (cloudTasks) => {
-      tasks = cloudTasks;
-      renderTasks();
-    });
+    listTabCompany.classList.toggle("hidden", !hasCompanyAccess(user));
+
+    if (currentScope === "company" && !hasCompanyAccess(user)) {
+      resetToPersonalTab();
+    }
   } else {
-    currentUser = null;
-    tasks = [];
-    renderTasks();
+    listTabCompany.classList.add("hidden");
+    resetToPersonalTab();
 
     authStatus.textContent = "Not signed in";
     signInButton.classList.remove("hidden");
     signOutButton.classList.add("hidden");
   }
+
+  subscribeToCurrentList();
 });
 
 if (appVersion) {
