@@ -25,7 +25,7 @@ the live app moved from
 URL now 404s; any bookmarks or installed PWAs need re-pointing at the new
 URL (see `docs/HOSTING.md`).
 
-### v1.1.0 — Personal + shared company list 🔨
+### v1.1.0 — Personal + shared company list ✅
 Added a "My List" / "Company List" switcher. `firebase/firestore.js` is now
 scope-agnostic (works against any Firestore collection reference); the
 company list lives at `companies/barely-artificial/tasks/{taskId}`,
@@ -37,7 +37,7 @@ bypassed client-side). Added `.claude/launch.json` for local dev preview.
 `firestore.rules` is deployed to production (confirmed against the live
 rules before deploying).
 
-### v1.2.0 — Company email sign-in (email + password) 🔨
+### v1.2.0 — Company email sign-in (email + password) ✅
 Discovered while testing v1.1.0: "sign in with a `@barelyartificial.com`
 email" only worked if that email was backed by a real Google account
 (Workspace). Paul and Steve have both been signing in with personal Gmail
@@ -58,16 +58,14 @@ exactly as before for personal use.
   what the Company List access check (both client-side and
   `firestore.rules`) actually keys off, so access unlocks only once that
   link is clicked.
-Still 🔨 pending, both carried over from v1.1.0 and new to this round:
-- The Firebase console's Email/Password sign-in provider needs enabling
-  once, manually (Authentication → Sign-in method → Email/Password →
-  Enable) — Claude Code can't do this without signing into the console.
-  Tested against the live project: currently disabled, surfaces a clear
-  in-app error (`auth/operation-not-allowed`) rather than failing silently.
-- End-to-end verification with real accounts: Paul linking his
-  `barelyartificial.com` email to his existing Google-signed-in account and
-  confirming his personal list carries over; Steve creating a fresh
-  account; both confirming the Company List syncs between them.
+Email/Password enabled in the Firebase console (manual one-time step).
+Verified end-to-end live: Paul linked his `barelyartificial.com` email to
+his existing Google-signed-in account, verified it, signed out/back in,
+and the Company List tab appeared with his personal list intact. Still
+⏳ not started: Steve creating his own account (he has no prior personal
+list to preserve, so just "Create account" with his `@barelyartificial.com`
+email) and confirming the Company List actually syncs between the two of
+them.
 
 ## Backlog / ideas
 
