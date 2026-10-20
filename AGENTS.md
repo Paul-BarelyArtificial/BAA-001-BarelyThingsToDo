@@ -30,6 +30,13 @@ There's no build/lint/type-check tooling here — "done" means:
 - Manually tested in a desktop browser (signed in, add/clear/reorder tasks).
 - Manually tested in a mobile browser and as the installed PWA.
 - Footer version bumped and matches what's deployed.
+- Every cache-busting `?v=` query string bumped together — not just
+  `index.html`'s `<script>`/`<link>` tags, but the internal ES module
+  imports too (`js/app.js` → `firebase/auth.js`/`firebase/firestore.js` →
+  `firebase/config.js`). See `docs/HOSTING.md`'s Cache-busting section —
+  missing one of these breaks the whole app silently for any returning
+  visitor with a stale cache, with no error visible in the UI (this
+  happened for real going from v1.2.0 to v1.3.0, fixed in v1.3.1).
 
 ## Roadmap tracking
 Keep `docs/ROADMAP.md` with Shipped / Backlog / Deferred sections (see

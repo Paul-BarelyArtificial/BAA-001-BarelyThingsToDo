@@ -97,6 +97,21 @@ flow itself verified live with a real signed-in account (Firestore
 `updateTask` call, cross-device sync) — same category of thing that
 needed Paul's own sign-in to confirm for v1.1.0/v1.2.0.
 
+### v1.3.1 — Fix: app silently broken for returning visitors ✅
+Paul reported "Sign in with Google" and "Use company email" doing nothing
+after refreshing post-v1.3.0. Root cause: `firebase/firestore.js` gained a
+new export (`updateTask`) in v1.3.0, but `js/app.js`'s import of it had no
+cache-busting query string — only `index.html`'s references to
+`js/app.js` itself did. A returning browser with a stale cached
+`firebase/firestore.js` (missing `updateTask`) made the whole module fail
+to load, silently, with zero event listeners attached and no visible
+error — every button just did nothing. Fixed by cache-busting *every*
+internal ES module import (`js/app.js` → `firebase/auth.js` /
+`firebase/firestore.js` → `firebase/config.js`), not just the entry
+point. Documented as a required step in `docs/HOSTING.md`'s new
+Cache-busting section and added to `AGENTS.md`'s definition of done, so
+this class of bug can't recur unnoticed.
+
 ## Backlog / ideas
 
 - **Move items between My List and Company List, plus a "with" (assignee)

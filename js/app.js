@@ -5,7 +5,7 @@ import {
   linkCompanyEmail,
   signOutUser,
   watchAuth
-} from "../firebase/auth.js";
+} from "../firebase/auth.js?v=1.3.1";
 
 import {
   personalTasksCollection,
@@ -15,9 +15,9 @@ import {
   deleteTask as deleteCloudTask,
   updateTask as updateCloudTask,
   updateTaskOrder
-} from "../firebase/firestore.js";
+} from "../firebase/firestore.js?v=1.3.1";
 
-const APP_VERSION = "v1.3.0";
+const APP_VERSION = "v1.3.1";
 const COMPANY_EMAIL_DOMAIN = "barelyartificial.com";
 
 const taskEntrySection = document.querySelector("#task-entry");
