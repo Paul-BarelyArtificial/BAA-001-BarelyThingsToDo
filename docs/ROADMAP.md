@@ -34,10 +34,10 @@ control: the Company List tab only appears, and only works, for accounts
 signed in with a verified `@barelyartificial.com` email — enforced both in
 the UI (tab hidden otherwise) and in `firestore.rules` (so it can't be
 bypassed client-side). Added `.claude/launch.json` for local dev preview.
-Still 🔨 pending: `firestore.rules` deployed to production (drafted, not
-yet applied — see commit message / chat for the explicit go-ahead), and
-sign-in-gated behavior (tab switching, cross-device sync) verified live
-with real Google accounts rather than just the signed-out UI.
+`firestore.rules` is deployed to production (confirmed against the live
+rules before deploying). Still 🔨 pending: sign-in-gated behavior (tab
+switching, cross-device sync, Steve's own account) verified live with real
+Google accounts — only the signed-out UI has been checked so far.
 
 ## Backlog / ideas
 
