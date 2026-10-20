@@ -69,6 +69,30 @@ them.
 
 ## Backlog / ideas
 
+- **Move items between My List and Company List, plus a "with" (assignee)
+  field on company items, surfaced back on the personal list.** Three
+  related pieces:
+  - *Move*: an action on a task card to move it from one list to the
+    other (both directions, not just personal → company). Mechanically
+    this is a copy-then-delete across Firestore collections, not a simple
+    update — `users/{uid}/tasks` and `companies/barely-artificial/tasks`
+    are different collections, each with their own `order` sequence, so a
+    moved item gets a fresh order value (e.g. end of the destination list)
+    rather than trying to preserve its old position.
+  - *"With" metadata*: an `assignedTo` field on company list items, so a
+    task can show who it's with. A single assignee, picked from current
+    Company List members (today just Paul and Steve; unassigned is also
+    valid) — not free text, not multiple assignees.
+  - *Surfaced on personal list*: a company item assigned to the signed-in
+    user also appears on their My List, flagged "From Company List," as a
+    separate, non-reorderable section (not interleaved with your own
+    freely-draggable items) — its real position and order still live on
+    the Company List, so reordering/clearing it there is what actually
+    changes it.
+  Shape confirmed with Paul (2026-10-20) — deliberately kept to the
+  simplest version of each piece above rather than anything more
+  elaborate. Ready to build as written when picked up.
+
 - **Modernize the UI + rename the app to "Barely Things To Do."** Current
   UI is the original v1.0.0 look; wants a visual refresh. Rename touches:
   `index.html` (`<title>`, `apple-mobile-web-app-title`, `<h1>`),
