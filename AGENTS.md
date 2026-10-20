@@ -9,6 +9,22 @@ deliberate deferral, not an oversight — see `docs/ROADMAP.md`'s Deferred
 section. Don't migrate it to the Worker stack without asking first; it's a
 full rewrite, not a refactor.
 
+## Product philosophy
+The whole point of this app is to be the simple to-do manager that others on
+the market over-complicate. No due dates, no deadlines, and no priority
+*sorting or filtering* — order in the list is still the only thing that
+determines what happens first, set by reordering alone.
+
+A purely visual priority cue (e.g. a card's outline color) is fine, as long
+as it stays decorative: it must never sort, filter, or group items, and
+must never gate reordering. The moment a "priority" concept would change
+what order items are acted on beyond manual reordering, it's out — treat it
+like due dates/deadlines and put it in `docs/ROADMAP.md`'s Deferred section
+with reasoning, rather than building it.
+
+Weigh every feature idea against this before logging it in
+`docs/ROADMAP.md`'s Backlog.
+
 ## Definition of done
 There's no build/lint/type-check tooling here — "done" means:
 - Manually tested in a desktop browser (signed in, add/clear/reorder tasks).
