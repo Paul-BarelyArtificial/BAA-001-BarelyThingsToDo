@@ -5,7 +5,7 @@ import {
   linkCompanyEmail,
   signOutUser,
   watchAuth
-} from "../firebase/auth.js?v=1.3.1";
+} from "../firebase/auth.js?v=1.3.2";
 
 import {
   personalTasksCollection,
@@ -15,17 +15,14 @@ import {
   deleteTask as deleteCloudTask,
   updateTask as updateCloudTask,
   updateTaskOrder
-} from "../firebase/firestore.js?v=1.3.1";
+} from "../firebase/firestore.js?v=1.3.2";
 
-const APP_VERSION = "v1.3.1";
+const APP_VERSION = "v1.3.2";
 const COMPANY_EMAIL_DOMAIN = "barelyartificial.com";
 
-const taskEntrySection = document.querySelector("#task-entry");
-const taskEntryLabel = document.querySelector("#task-entry-label");
 const taskTitleInput = document.querySelector("#task-title");
 const taskNotesInput = document.querySelector("#task-notes");
 const toggleNotesButton = document.querySelector("#toggle-notes");
-const cancelEditButton = document.querySelector("#cancel-edit");
 const addTaskButton = document.querySelector("#add-task");
 const taskList = document.querySelector("#task-list");
 const emptyState = document.querySelector("#empty-state");
@@ -51,6 +48,9 @@ let currentScope = "personal";
 let unsubscribeTasks = null;
 let draggedTaskId = null;
 let editingTaskId = null;
+let editDraftTitle = "";
+let editDraftNotes = "";
+let editNotesOpen = false;
 
 function hasCompanyAccess(user) {
   if (!user || !user.email || !user.emailVerified) return false;
@@ -146,71 +146,100 @@ function renderTasks() {
 
   tasks.forEach((task) => {
     const item = document.createElement("li");
-    item.className = "task-card";
-    item.classList.toggle("editing", task.id === editingTaskId);
     item.dataset.id = task.id;
 
-    item.innerHTML = `
-      <span class="drag-handle" aria-hidden="true">⋮⋮</span>
-      <div class="task-content">
-        <h2>${escapeHtml(task.title)}</h2>
-        ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ""}
-      </div>
-      <div class="task-actions">
-        <button class="edit-button" type="button" aria-label="Edit task">✎</button>
-        <button class="clear-button" type="button" aria-label="Clear task">✓</button>
-      </div>
-    `;
+    if (task.id === editingTaskId) {
+      renderEditingCard(item);
+    } else {
+      renderReadOnlyCard(item, task);
+    }
 
     taskList.appendChild(item);
   });
 }
 
+function renderReadOnlyCard(item, task) {
+  item.className = "task-card";
+
+  item.innerHTML = `
+    <span class="drag-handle" aria-hidden="true">⋮⋮</span>
+    <div class="task-content">
+      <h2>${escapeHtml(task.title)}</h2>
+      ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ""}
+    </div>
+    <div class="task-actions">
+      <button class="edit-button" type="button" aria-label="Edit task">✎</button>
+      <button class="clear-button" type="button" aria-label="Clear task">✓</button>
+    </div>
+  `;
+}
+
+function renderEditingCard(item) {
+  item.className = "task-card editing";
+
+  item.innerHTML = `
+    <span class="drag-handle" aria-hidden="true">⋮⋮</span>
+    <div class="task-content task-edit-form">
+      <input class="edit-title-input" type="text" maxlength="100" autocomplete="off" />
+
+      <div class="edit-toolbar">
+        <button class="edit-toggle-notes text-button" type="button">
+          ${editNotesOpen ? "− Notes" : "+ Notes"}
+        </button>
+        <button class="cancel-edit-button text-button" type="button">Cancel</button>
+      </div>
+
+      <textarea
+        class="edit-notes-input ${editNotesOpen ? "" : "hidden"}"
+        rows="3"
+        placeholder="Optional notes..."
+      ></textarea>
+
+      <div class="edit-actions">
+        <span class="edit-char-count">${editDraftTitle.length} / 100</span>
+        <button class="save-edit-button" type="button">Save</button>
+      </div>
+    </div>
+  `;
+
+  const titleInput = item.querySelector(".edit-title-input");
+  titleInput.value = editDraftTitle;
+
+  const notesInput = item.querySelector(".edit-notes-input");
+  notesInput.value = editDraftNotes;
+}
+
 function enterEditMode(task) {
   editingTaskId = task.id;
-
-  taskTitleInput.value = task.title;
-  taskNotesInput.value = task.notes || "";
-  updateCharacterCount();
-
-  if (task.notes) {
-    taskNotesInput.classList.remove("hidden");
-    toggleNotesButton.textContent = "− Notes";
-  }
-
-  taskEntrySection.classList.add("editing");
-  taskEntryLabel.textContent = "Edit task";
-  addTaskButton.textContent = "Save";
-  cancelEditButton.classList.remove("hidden");
+  editDraftTitle = task.title;
+  editDraftNotes = task.notes || "";
+  editNotesOpen = Boolean(task.notes);
 
   renderTasks();
 
-  taskTitleInput.focus();
-  taskTitleInput.select();
+  const titleInput = taskList.querySelector(
+    `[data-id="${task.id}"] .edit-title-input`
+  );
+  if (titleInput) {
+    titleInput.focus();
+    titleInput.select();
+  }
 }
 
 function exitEditMode() {
   if (!editingTaskId) return;
 
   editingTaskId = null;
-
-  taskEntrySection.classList.remove("editing");
-  taskEntryLabel.textContent = "What needs doing tomorrow?";
-  addTaskButton.textContent = "Add";
-  cancelEditButton.classList.add("hidden");
-
-  taskTitleInput.value = "";
-  taskNotesInput.value = "";
-  taskNotesInput.classList.add("hidden");
-  toggleNotesButton.textContent = "+ Notes";
-  charCount.textContent = "0 / 100";
+  editDraftTitle = "";
+  editDraftNotes = "";
+  editNotesOpen = false;
 
   renderTasks();
 }
 
 async function saveEditedTask() {
-  const title = taskTitleInput.value.trim();
-  const notes = taskNotesInput.value.trim();
+  const title = editDraftTitle.trim();
+  const notes = editDraftNotes.trim();
 
   if (!title) return;
 
@@ -219,7 +248,6 @@ async function saveEditedTask() {
 
   await updateCloudTask(tasksRef, editingTaskId, { title, notes });
   exitEditMode();
-  taskTitleInput.focus();
 }
 
 async function addTask() {
@@ -353,34 +381,17 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-addTaskButton.addEventListener("click", () => {
-  if (editingTaskId) {
-    saveEditedTask();
-  } else {
-    addTask();
-  }
-});
-
+addTaskButton.addEventListener("click", addTask);
 taskTitleInput.addEventListener("input", updateCharacterCount);
 
 taskTitleInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
-
-    if (editingTaskId) {
-      saveEditedTask();
-    } else {
-      addTask();
-    }
+    addTask();
   }
 });
 
 toggleNotesButton.addEventListener("click", toggleNotes);
-
-cancelEditButton.addEventListener("click", () => {
-  exitEditMode();
-  taskTitleInput.focus();
-});
 
 taskList.addEventListener("click", (event) => {
   const clearButton = event.target.closest(".clear-button");
@@ -395,7 +406,59 @@ taskList.addEventListener("click", (event) => {
     const item = editButton.closest(".task-card");
     const task = tasks.find((candidate) => candidate.id === item.dataset.id);
     if (task) enterEditMode(task);
+    return;
   }
+
+  const saveEditButton = event.target.closest(".save-edit-button");
+  if (saveEditButton) {
+    saveEditedTask();
+    return;
+  }
+
+  const cancelEditButton = event.target.closest(".cancel-edit-button");
+  if (cancelEditButton) {
+    exitEditMode();
+    return;
+  }
+
+  const editToggleNotes = event.target.closest(".edit-toggle-notes");
+  if (editToggleNotes) {
+    editNotesOpen = !editNotesOpen;
+    renderTasks();
+
+    const item = editToggleNotes.closest(".task-card");
+    const notesInput = item?.querySelector(".edit-notes-input");
+    if (notesInput && !notesInput.classList.contains("hidden")) {
+      notesInput.focus();
+    }
+  }
+});
+
+taskList.addEventListener("input", (event) => {
+  const titleInput = event.target.closest(".edit-title-input");
+  if (titleInput) {
+    editDraftTitle = titleInput.value;
+
+    const item = titleInput.closest(".task-card");
+    const count = item?.querySelector(".edit-char-count");
+    if (count) count.textContent = `${editDraftTitle.length} / 100`;
+    return;
+  }
+
+  const notesInput = event.target.closest(".edit-notes-input");
+  if (notesInput) {
+    editDraftNotes = notesInput.value;
+  }
+});
+
+taskList.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+
+  const titleInput = event.target.closest(".edit-title-input");
+  if (!titleInput) return;
+
+  event.preventDefault();
+  saveEditedTask();
 });
 
 if (window.Sortable) {

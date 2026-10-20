@@ -86,11 +86,11 @@ Three things in one round:
   longer title, added subtle button press feedback and task-card hover
   lift, and a brief fade-in on task cards. Same layout and dark theme
   throughout — not a redesign.
-- **Edit an existing item**: an edit (✎) button on each task card opens it
-  in the entry form (title + notes prefilled, "Add" becomes "Save"), via a
+- **Edit an existing item**: an edit (✎) button on each task card, via a
   new `updateTask()` in `firebase/firestore.js`. Editing is cancelled
   automatically if you switch lists, sign out, or the item you're editing
-  gets cleared from elsewhere.
+  gets cleared from elsewhere. Initial version reused the top entry form;
+  reworked in v1.3.2 (below) to expand inline instead, based on feedback.
 Verified locally (no sign-in needed): rename, manifest fix, visual polish,
 no console errors, works at mobile width. Still 🔨 pending: the edit
 flow itself verified live with a real signed-in account (Firestore
@@ -111,6 +111,31 @@ internal ES module import (`js/app.js` → `firebase/auth.js` /
 point. Documented as a required step in `docs/HOSTING.md`'s new
 Cache-busting section and added to `AGENTS.md`'s definition of done, so
 this class of bug can't recur unnoticed.
+
+### v1.3.2 — Rework edit-item UI: inline card expansion 🔨
+Paul tried the v1.3.0 edit feature and gave two pieces of feedback: (1)
+editing in the top entry form, away from the card, felt disconnected —
+wanted the card itself to expand in place instead; (2) within that form,
+"+ Notes" and "Cancel" sat right next to each other with no separation,
+reading as "+Notes Cancel". Reworked accordingly:
+- The task card being edited now expands inline (title input, notes
+  toggle, textarea, Save button, all inside the card itself) instead of
+  populating the top "Add a task" form, which now only ever adds new
+  tasks again.
+- "+/− Notes" and "Cancel" sit at opposite ends of a flex row
+  (`justify-content: space-between`) inside the expanded card, fixing the
+  spacing complaint directly.
+- Typing in the edit fields no longer triggers a full list re-render (which
+  would have dropped focus/cursor position on every keystroke) — draft
+  title/notes are tracked in state and only the character count updates
+  live; the card only fully re-renders on toggling notes, saving, or
+  cancelling.
+Verified locally: injected a mock editing card matching the exact markup
+the app generates, confirmed visually against the layout Paul asked for
+(expanded card, accent border, Notes/Cancel at opposite ends, Save bottom
+right). Couldn't fully exercise the real click → Firestore `updateTask`
+→ re-render path without signing in — same category of thing that's
+needed Paul's own sign-in to confirm every round so far.
 
 ## Backlog / ideas
 
