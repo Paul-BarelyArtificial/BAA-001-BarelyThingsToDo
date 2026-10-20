@@ -35,9 +35,39 @@ signed in with a verified `@barelyartificial.com` email — enforced both in
 the UI (tab hidden otherwise) and in `firestore.rules` (so it can't be
 bypassed client-side). Added `.claude/launch.json` for local dev preview.
 `firestore.rules` is deployed to production (confirmed against the live
-rules before deploying). Still 🔨 pending: sign-in-gated behavior (tab
-switching, cross-device sync, Steve's own account) verified live with real
-Google accounts — only the signed-out UI has been checked so far.
+rules before deploying).
+
+### v1.2.0 — Company email sign-in (email + password) 🔨
+Discovered while testing v1.1.0: "sign in with a `@barelyartificial.com`
+email" only worked if that email was backed by a real Google account
+(Workspace). Paul and Steve have both been signing in with personal Gmail
+addresses, so the domain check in v1.1.0 had nothing to match against.
+Added a proper fix: `firebase/auth.js` now also supports email/password
+sign-in via Firebase Auth directly (no Google account needed for the
+company email). Signing in with Google is unaffected and still works
+exactly as before for personal use.
+- *New accounts* (e.g. Steve): "Create account" with their
+  `@barelyartificial.com` email + a password, straight away — no linking
+  needed since there's no prior data to preserve.
+- *Existing accounts* (Paul, already using a personal Gmail): "Link to my
+  account" attaches the company email/password credential to the *same*
+  Firebase account/UID as the existing Google sign-in, so the existing
+  personal list isn't lost or duplicated. If the linked email differs from
+  the account's current primary email, Firebase sends a verification link
+  before promoting it to primary (`verifyBeforeUpdateEmail`) — this is
+  what the Company List access check (both client-side and
+  `firestore.rules`) actually keys off, so access unlocks only once that
+  link is clicked.
+Still 🔨 pending, both carried over from v1.1.0 and new to this round:
+- The Firebase console's Email/Password sign-in provider needs enabling
+  once, manually (Authentication → Sign-in method → Email/Password →
+  Enable) — Claude Code can't do this without signing into the console.
+  Tested against the live project: currently disabled, surfaces a clear
+  in-app error (`auth/operation-not-allowed`) rather than failing silently.
+- End-to-end verification with real accounts: Paul linking his
+  `barelyartificial.com` email to his existing Google-signed-in account and
+  confirming his personal list carries over; Steve creating a fresh
+  account; both confirming the Company List syncs between them.
 
 ## Backlog / ideas
 

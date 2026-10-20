@@ -1,5 +1,8 @@
 import {
   signInWithGoogle,
+  signInWithEmail,
+  signUpWithEmail,
+  linkCompanyEmail,
   signOutUser,
   watchAuth
 } from "../firebase/auth.js";
@@ -13,7 +16,7 @@ import {
   updateTaskOrder
 } from "../firebase/firestore.js";
 
-const APP_VERSION = "v1.1.0";
+const APP_VERSION = "v1.2.0";
 const COMPANY_EMAIL_DOMAIN = "barelyartificial.com";
 
 const taskTitleInput = document.querySelector("#task-title");
@@ -29,6 +32,14 @@ const authStatus = document.querySelector("#auth-status");
 const appVersion = document.querySelector("#app-version");
 const listTabPersonal = document.querySelector("#list-tab-personal");
 const listTabCompany = document.querySelector("#list-tab-company");
+const toggleEmailAuthButton = document.querySelector("#toggle-email-auth");
+const emailAuthForm = document.querySelector("#email-auth-form");
+const emailAuthEmailInput = document.querySelector("#email-auth-email");
+const emailAuthPasswordInput = document.querySelector("#email-auth-password");
+const emailSignInButton = document.querySelector("#email-sign-in");
+const emailSignUpButton = document.querySelector("#email-sign-up");
+const emailLinkButton = document.querySelector("#email-link");
+const emailAuthStatus = document.querySelector("#email-auth-status");
 
 let tasks = [];
 let currentUser = null;
@@ -39,6 +50,42 @@ let draggedTaskId = null;
 function hasCompanyAccess(user) {
   if (!user || !user.email || !user.emailVerified) return false;
   return user.email.toLowerCase().endsWith(`@${COMPANY_EMAIL_DOMAIN}`);
+}
+
+const EMAIL_AUTH_ERROR_MESSAGES = {
+  "auth/invalid-email": "That doesn't look like a valid email address.",
+  "auth/user-not-found": "No account found for that email. Try “Create account” instead.",
+  "auth/wrong-password": "Wrong password.",
+  "auth/invalid-credential": "Wrong email or password.",
+  "auth/email-already-in-use": "An account already exists for that email. Try “Sign in” instead.",
+  "auth/credential-already-in-use": "That email is already linked to a different account.",
+  "auth/weak-password": "Password must be at least 6 characters.",
+  "auth/requires-recent-login": "Please sign out and back in, then try linking again.",
+  "auth/operation-not-allowed": "Email sign-in isn't turned on yet — ask an admin to enable it in the Firebase console."
+};
+
+function emailAuthErrorMessage(error) {
+  return EMAIL_AUTH_ERROR_MESSAGES[error.code] || "Something went wrong. Please try again.";
+}
+
+function setEmailAuthStatus(message) {
+  emailAuthStatus.textContent = message;
+}
+
+function updateEmailAuthVisibility() {
+  const signedIn = Boolean(currentUser);
+  const alreadyHasCompanyAccess = hasCompanyAccess(currentUser);
+
+  emailSignInButton.classList.toggle("hidden", signedIn);
+  emailSignUpButton.classList.toggle("hidden", signedIn);
+  emailLinkButton.classList.toggle("hidden", !signedIn || alreadyHasCompanyAccess);
+
+  if (alreadyHasCompanyAccess) {
+    emailAuthForm.classList.add("hidden");
+    toggleEmailAuthButton.classList.add("hidden");
+  } else {
+    toggleEmailAuthButton.classList.remove("hidden");
+  }
 }
 
 function currentTasksRef() {
@@ -300,7 +347,7 @@ watchAuth((user) => {
   currentUser = user;
 
   if (user) {
-    authStatus.textContent = `Hi ${user.displayName}`;
+    authStatus.textContent = `Hi ${user.displayName || user.email}`;
     signInButton.classList.add("hidden");
     signOutButton.classList.remove("hidden");
 
@@ -318,7 +365,78 @@ watchAuth((user) => {
     signOutButton.classList.add("hidden");
   }
 
+  updateEmailAuthVisibility();
   subscribeToCurrentList();
+});
+
+toggleEmailAuthButton.addEventListener("click", () => {
+  emailAuthForm.classList.toggle("hidden");
+
+  toggleEmailAuthButton.textContent = emailAuthForm.classList.contains("hidden")
+    ? "+ Use company email"
+    : "− Use company email";
+});
+
+emailSignInButton.addEventListener("click", async () => {
+  const email = emailAuthEmailInput.value.trim();
+  const password = emailAuthPasswordInput.value;
+
+  if (!email || !password) {
+    setEmailAuthStatus("Enter your email and password.");
+    return;
+  }
+
+  try {
+    setEmailAuthStatus("Signing in…");
+    await signInWithEmail(email, password);
+    setEmailAuthStatus("");
+    emailAuthPasswordInput.value = "";
+  } catch (error) {
+    console.error(error);
+    setEmailAuthStatus(emailAuthErrorMessage(error));
+  }
+});
+
+emailSignUpButton.addEventListener("click", async () => {
+  const email = emailAuthEmailInput.value.trim();
+  const password = emailAuthPasswordInput.value;
+
+  if (!email || !password) {
+    setEmailAuthStatus("Enter your email and password.");
+    return;
+  }
+
+  try {
+    setEmailAuthStatus("Creating account…");
+    await signUpWithEmail(email, password);
+    setEmailAuthStatus("Account created. Check your inbox to verify your email.");
+    emailAuthPasswordInput.value = "";
+  } catch (error) {
+    console.error(error);
+    setEmailAuthStatus(emailAuthErrorMessage(error));
+  }
+});
+
+emailLinkButton.addEventListener("click", async () => {
+  const email = emailAuthEmailInput.value.trim();
+  const password = emailAuthPasswordInput.value;
+
+  if (!email || !password) {
+    setEmailAuthStatus("Enter your barelyartificial.com email and a password.");
+    return;
+  }
+
+  try {
+    setEmailAuthStatus("Linking…");
+    await linkCompanyEmail(email, password);
+    setEmailAuthStatus(
+      `Check your inbox to verify ${email}. Once verified, sign out and back in to unlock the Company List.`
+    );
+    emailAuthPasswordInput.value = "";
+  } catch (error) {
+    console.error(error);
+    setEmailAuthStatus(emailAuthErrorMessage(error));
+  }
 });
 
 if (appVersion) {

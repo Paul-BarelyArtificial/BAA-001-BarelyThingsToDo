@@ -14,7 +14,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/png" href="images/favicon-32.png" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=1.1.0" />
+  <link rel="stylesheet" href="css/styles.css?v=1.2.0" />
 </head>
 <body>
   <main class="app-shell">
@@ -31,6 +31,41 @@
         <p id="auth-status">Not signed in</p>
         <button id="sign-in" type="button">Sign in with Google</button>
         <button id="sign-out" class="hidden" type="button">Sign out</button>
+      </div>
+
+      <div id="email-auth" class="email-auth">
+        <button id="toggle-email-auth" class="text-button" type="button">
+          + Use company email
+        </button>
+
+        <div id="email-auth-form" class="email-auth-form hidden">
+          <input
+            id="email-auth-email"
+            type="email"
+            placeholder="you@barelyartificial.com"
+            autocomplete="email"
+          />
+          <input
+            id="email-auth-password"
+            type="password"
+            placeholder="Password"
+            autocomplete="current-password"
+          />
+
+          <div class="email-auth-actions">
+            <button id="email-sign-in" class="text-button" type="button">
+              Sign in
+            </button>
+            <button id="email-sign-up" class="text-button" type="button">
+              Create account
+            </button>
+            <button id="email-link" class="text-button hidden" type="button">
+              Link to my account
+            </button>
+          </div>
+
+          <p id="email-auth-status" class="email-auth-status"></p>
+        </div>
       </div>
     </header>
 
@@ -94,11 +129,11 @@
     <footer class="app-footer">
       <span>Barely Artificial</span>
       <span aria-hidden="true">•</span>
-      <span id="app-version">v1.1.0</span>
+      <span id="app-version">v1.2.0</span>
     </footer>
   </main>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-  <script type="module" src="js/app.js?v=1.1.0"></script>
+  <script type="module" src="js/app.js?v=1.2.0"></script>
 </body>
 </html>

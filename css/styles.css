@@ -83,6 +83,42 @@ h1 {
   font-size: 1.05rem;
 }
 
+.email-auth {
+  margin-top: 14px;
+}
+
+.email-auth-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.email-auth-form input {
+  width: auto;
+  flex: 1 1 200px;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  border-radius: 14px;
+}
+
+.email-auth-actions {
+  display: flex;
+  gap: 14px;
+}
+
+.email-auth-actions .text-button {
+  margin-top: 0;
+}
+
+.email-auth-status {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .list-switcher {
   display: inline-flex;
   gap: 4px;
