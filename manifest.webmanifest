@@ -1,9 +1,9 @@
 {
-  "name": "To Do Tomorrow by Barely Artificial",
-  "short_name": "To Do Tomorrow",
+  "name": "Barely Things To Do",
+  "short_name": "Barely ToDo",
   "description": "A calm, cloud-synced task list by Barely Artificial.",
-  "start_url": "/to-do-tomorrow/",
-  "scope": "/to-do-tomorrow/",
+  "start_url": "/BAA-001-BarelyThingsToDo/",
+  "scope": "/BAA-001-BarelyThingsToDo/",
   "display": "standalone",
   "background_color": "#070B10",
   "theme_color": "#2FB9ED",

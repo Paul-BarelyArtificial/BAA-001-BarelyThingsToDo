@@ -4,17 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>Barely Artificial • To Do Tomorrow</title>
+  <title>Barely Things To Do</title>
 
   <meta name="theme-color" content="#2FB9ED" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="To Do Tomorrow" />
+  <meta name="apple-mobile-web-app-title" content="Barely ToDo" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/png" href="images/favicon-32.png" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=1.2.0" />
+  <link rel="stylesheet" href="css/styles.css?v=1.3.0" />
 </head>
 <body>
   <main class="app-shell">
@@ -24,7 +24,7 @@
         <p class="brand">Barely Artificial</p>
       </div>
 
-      <h1>To Do Tomorrow</h1>
+      <h1>Barely Things To Do</h1>
       <p class="tagline">One thing at a time.</p>
 
       <div class="auth-panel">
@@ -90,8 +90,8 @@
       </button>
     </div>
 
-    <section class="task-entry" aria-label="Add a task">
-      <label for="task-title">What needs doing tomorrow?</label>
+    <section id="task-entry" class="task-entry" aria-label="Add a task">
+      <label for="task-title" id="task-entry-label">What needs doing tomorrow?</label>
       <input
         id="task-title"
         type="text"
@@ -102,6 +102,9 @@
 
       <button id="toggle-notes" class="text-button" type="button">
         + Notes
+      </button>
+      <button id="cancel-edit" class="text-button hidden" type="button">
+        Cancel
       </button>
 
       <textarea
@@ -129,11 +132,11 @@
     <footer class="app-footer">
       <span>Barely Artificial</span>
       <span aria-hidden="true">•</span>
-      <span id="app-version">v1.2.0</span>
+      <span id="app-version">v1.3.0</span>
     </footer>
   </main>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-  <script type="module" src="js/app.js?v=1.2.0"></script>
+  <script type="module" src="js/app.js?v=1.3.0"></script>
 </body>
 </html>

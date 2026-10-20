@@ -13,15 +13,19 @@ import {
   watchTasks,
   saveTask as saveCloudTask,
   deleteTask as deleteCloudTask,
+  updateTask as updateCloudTask,
   updateTaskOrder
 } from "../firebase/firestore.js";
 
-const APP_VERSION = "v1.2.0";
+const APP_VERSION = "v1.3.0";
 const COMPANY_EMAIL_DOMAIN = "barelyartificial.com";
 
+const taskEntrySection = document.querySelector("#task-entry");
+const taskEntryLabel = document.querySelector("#task-entry-label");
 const taskTitleInput = document.querySelector("#task-title");
 const taskNotesInput = document.querySelector("#task-notes");
 const toggleNotesButton = document.querySelector("#toggle-notes");
+const cancelEditButton = document.querySelector("#cancel-edit");
 const addTaskButton = document.querySelector("#add-task");
 const taskList = document.querySelector("#task-list");
 const emptyState = document.querySelector("#empty-state");
@@ -46,6 +50,7 @@ let currentUser = null;
 let currentScope = "personal";
 let unsubscribeTasks = null;
 let draggedTaskId = null;
+let editingTaskId = null;
 
 function hasCompanyAccess(user) {
   if (!user || !user.email || !user.emailVerified) return false;
@@ -111,6 +116,11 @@ function subscribeToCurrentList() {
 
   unsubscribeTasks = watchTasks(tasksRef, (cloudTasks) => {
     tasks = cloudTasks;
+
+    if (editingTaskId && !tasks.some((task) => task.id === editingTaskId)) {
+      exitEditMode();
+    }
+
     renderTasks();
   });
 }
@@ -119,6 +129,7 @@ function setScope(scope) {
   if (scope === currentScope) return;
   if (scope === "company" && !hasCompanyAccess(currentUser)) return;
 
+  exitEditMode();
   currentScope = scope;
 
   listTabPersonal.classList.toggle("active", scope === "personal");
@@ -136,6 +147,7 @@ function renderTasks() {
   tasks.forEach((task) => {
     const item = document.createElement("li");
     item.className = "task-card";
+    item.classList.toggle("editing", task.id === editingTaskId);
     item.dataset.id = task.id;
 
     item.innerHTML = `
@@ -144,11 +156,70 @@ function renderTasks() {
         <h2>${escapeHtml(task.title)}</h2>
         ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ""}
       </div>
-      <button class="clear-button" type="button" aria-label="Clear task">✓</button>
+      <div class="task-actions">
+        <button class="edit-button" type="button" aria-label="Edit task">✎</button>
+        <button class="clear-button" type="button" aria-label="Clear task">✓</button>
+      </div>
     `;
 
     taskList.appendChild(item);
   });
+}
+
+function enterEditMode(task) {
+  editingTaskId = task.id;
+
+  taskTitleInput.value = task.title;
+  taskNotesInput.value = task.notes || "";
+  updateCharacterCount();
+
+  if (task.notes) {
+    taskNotesInput.classList.remove("hidden");
+    toggleNotesButton.textContent = "− Notes";
+  }
+
+  taskEntrySection.classList.add("editing");
+  taskEntryLabel.textContent = "Edit task";
+  addTaskButton.textContent = "Save";
+  cancelEditButton.classList.remove("hidden");
+
+  renderTasks();
+
+  taskTitleInput.focus();
+  taskTitleInput.select();
+}
+
+function exitEditMode() {
+  if (!editingTaskId) return;
+
+  editingTaskId = null;
+
+  taskEntrySection.classList.remove("editing");
+  taskEntryLabel.textContent = "What needs doing tomorrow?";
+  addTaskButton.textContent = "Add";
+  cancelEditButton.classList.add("hidden");
+
+  taskTitleInput.value = "";
+  taskNotesInput.value = "";
+  taskNotesInput.classList.add("hidden");
+  toggleNotesButton.textContent = "+ Notes";
+  charCount.textContent = "0 / 100";
+
+  renderTasks();
+}
+
+async function saveEditedTask() {
+  const title = taskTitleInput.value.trim();
+  const notes = taskNotesInput.value.trim();
+
+  if (!title) return;
+
+  const tasksRef = currentTasksRef();
+  if (!tasksRef || !editingTaskId) return;
+
+  await updateCloudTask(tasksRef, editingTaskId, { title, notes });
+  exitEditMode();
+  taskTitleInput.focus();
 }
 
 async function addTask() {
@@ -282,24 +353,49 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-addTaskButton.addEventListener("click", addTask);
+addTaskButton.addEventListener("click", () => {
+  if (editingTaskId) {
+    saveEditedTask();
+  } else {
+    addTask();
+  }
+});
+
 taskTitleInput.addEventListener("input", updateCharacterCount);
 
 taskTitleInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
-    addTask();
+
+    if (editingTaskId) {
+      saveEditedTask();
+    } else {
+      addTask();
+    }
   }
 });
 
 toggleNotesButton.addEventListener("click", toggleNotes);
 
+cancelEditButton.addEventListener("click", () => {
+  exitEditMode();
+  taskTitleInput.focus();
+});
+
 taskList.addEventListener("click", (event) => {
   const clearButton = event.target.closest(".clear-button");
-  if (!clearButton) return;
+  if (clearButton) {
+    const item = clearButton.closest(".task-card");
+    clearTask(item.dataset.id);
+    return;
+  }
 
-  const item = clearButton.closest(".task-card");
-  clearTask(item.dataset.id);
+  const editButton = event.target.closest(".edit-button");
+  if (editButton) {
+    const item = editButton.closest(".task-card");
+    const task = tasks.find((candidate) => candidate.id === item.dataset.id);
+    if (task) enterEditMode(task);
+  }
 });
 
 if (window.Sortable) {
@@ -345,6 +441,7 @@ function resetToPersonalTab() {
 
 watchAuth((user) => {
   currentUser = user;
+  exitEditMode();
 
   if (user) {
     authStatus.textContent = `Hi ${user.displayName || user.email}`;

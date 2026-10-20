@@ -53,6 +53,10 @@ export async function deleteTask(tasksRef, taskId) {
   await deleteDoc(doc(tasksRef, taskId));
 }
 
+export async function updateTask(tasksRef, taskId, updates) {
+  await updateDoc(doc(tasksRef, taskId), updates);
+}
+
 export async function updateTaskOrder(tasksRef, tasks) {
   const updates = tasks.map((task, index) => {
     return updateDoc(doc(tasksRef, task.id), {

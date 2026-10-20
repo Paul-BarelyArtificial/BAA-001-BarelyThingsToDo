@@ -67,6 +67,36 @@ list to preserve, so just "Create account" with his `@barelyartificial.com`
 email) and confirming the Company List actually syncs between the two of
 them.
 
+### v1.3.0 — UI modernization, rename, edit existing items 🔨
+Three things in one round:
+- **Renamed** to "Barely Things To Do" everywhere in-app: `index.html`
+  (`<title>`, `apple-mobile-web-app-title`, `<h1>`), `manifest.webmanifest`
+  (`name`/`short_name`), `README.md` (also brought fully up to date —
+  it still said v1.0.0 and didn't mention the Company List or email
+  sign-in). `CHANGELOG.md`/`RELEASE_NOTES.md` left as historical record.
+  Found and fixed a real bug while in there: `manifest.webmanifest`'s
+  `start_url`/`scope` still pointed at the dead pre-rename
+  `/to-do-tomorrow/` path from the earlier repo rename — fixed to
+  `/BAA-001-BarelyThingsToDo/`. Renaming the manifest `name`/`short_name`
+  changes the installed PWA's home-screen label/icon caption — same
+  reinstall caveat as the repo URL change in `docs/HOSTING.md`: an
+  already-installed PWA keeps the old label until it's reinstalled from
+  the live URL.
+- **Light UI polish**: adjusted the `<h1>` sizing/letter-spacing for the
+  longer title, added subtle button press feedback and task-card hover
+  lift, and a brief fade-in on task cards. Same layout and dark theme
+  throughout — not a redesign.
+- **Edit an existing item**: an edit (✎) button on each task card opens it
+  in the entry form (title + notes prefilled, "Add" becomes "Save"), via a
+  new `updateTask()` in `firebase/firestore.js`. Editing is cancelled
+  automatically if you switch lists, sign out, or the item you're editing
+  gets cleared from elsewhere.
+Verified locally (no sign-in needed): rename, manifest fix, visual polish,
+no console errors, works at mobile width. Still 🔨 pending: the edit
+flow itself verified live with a real signed-in account (Firestore
+`updateTask` call, cross-device sync) — same category of thing that
+needed Paul's own sign-in to confirm for v1.1.0/v1.2.0.
+
 ## Backlog / ideas
 
 - **Move items between My List and Company List, plus a "with" (assignee)
@@ -92,20 +122,6 @@ them.
   Shape confirmed with Paul (2026-10-20) — deliberately kept to the
   simplest version of each piece above rather than anything more
   elaborate. Ready to build as written when picked up.
-
-- **Modernize the UI + rename the app to "Barely Things To Do."** Current
-  UI is the original v1.0.0 look; wants a visual refresh. Rename touches:
-  `index.html` (`<title>`, `apple-mobile-web-app-title`, `<h1>`),
-  `manifest.webmanifest` (`name`/`short_name`), `README.md`, and anywhere
-  else "To Do Tomorrow" appears in-app (not the historical `CHANGELOG.md`/
-  `RELEASE_NOTES.md`, which stay as-is). Renaming the manifest `short_name`
-  changes the installed PWA's home-screen label, so existing installs will
-  need reinstalling to pick up the new name/icon — same caveat as the repo
-  URL change in `docs/HOSTING.md`.
-
-- **Edit an existing item.** Open a previously created task and edit its
-  title and notes in place, rather than clear-and-re-add. Natural pairing
-  with the "open item" interaction the app already has for notes.
 
 - **Undo after clearing.** A brief "Undo" toast instead of an instant
   permanent delete — forgives a mis-tap without building out a full
@@ -136,10 +152,10 @@ them.
   `blue`) to each task, defaulting to `blue`.
   - *New items*: a row of three small color-dot buttons in the add form,
     `blue` pre-selected, tap/click red or amber to override before adding.
-  - *Existing ("legacy") items*: expose the same three-dot picker as part
-    of the "edit an existing item" interaction above (opening a card to
-    edit title/notes is the natural place to also change its color), rather
-    than adding a separate edit mode just for color.
+  - *Existing ("legacy") items*: expose the same three-dot picker in the
+    edit-item form (v1.3.0 — opening a card to edit title/notes is the
+    natural place to also change its color), rather than adding a separate
+    edit mode just for color.
 
 - **Top-priority summary paragraph near the top of the UI.** Long-term
   item, depends on the priority-color feature above landing first. Looks at
