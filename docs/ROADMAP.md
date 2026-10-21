@@ -424,6 +424,26 @@ Paul's own sign-in to confirm every round so far.
 
 ## Backlog / ideas
 
+- **Custom domain: `todo.barelyartificial.app`.** Move off the GitHub
+  Pages default URL to match the other portfolio apps' `xxxxx.
+  barelyartificial.app` convention — this app's live URL is currently
+  `https://paul-barelyartificial.github.io/BAA-001-BarelyThingsToDo/`
+  (see `docs/HOSTING.md`'s Live URL section), tied to the repo name with
+  no redirect if it ever changes again. Needs, when built:
+  - A `CNAME` file at the repo root (GitHub Pages custom domain) plus a
+    DNS record for `todo.barelyartificial.app` pointing at GitHub Pages —
+    whoever controls the `barelyartificial.app` DNS zone needs to add it.
+  - `todo.barelyartificial.app` added to Firebase Auth's authorized
+    domains list (`docs/HOSTING.md` notes sign-in requires the serving
+    domain to be authorized there) — otherwise sign-in breaks on the new
+    domain even though the page itself loads fine.
+  - Every installed PWA (phone/desktop) needs deleting and reinstalling
+    from the new URL, same caveat as the earlier repo-rename URL change —
+    worth telling Steve too, not just Paul.
+  - `docs/HOSTING.md`'s Live URL section updated once moved.
+  No need to build this now — logged for whenever the domain move
+  happens.
+
 - **Daily email notification.** One notification only, by design: a daily
   email with everything on the signed-in user's My List plus any Company
   List items assigned to them. A "Daily Notification" switch near the top
