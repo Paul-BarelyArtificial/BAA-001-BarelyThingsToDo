@@ -8,11 +8,12 @@ import {
   deleteField,
   doc,
   onSnapshot,
+  setDoc,
   updateDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
-import { app } from "./config.js?v=1.10.0";
+import { app } from "./config.js?v=1.11.0";
 
 // Persistent (IndexedDB-backed) local cache: reads work from cache while
 // offline, and writes queue locally and sync automatically once back
@@ -92,4 +93,26 @@ export async function updateTaskOrder(tasksRef, tasks) {
   });
 
   await Promise.all(updates);
+}
+
+// The per-user profile doc (parent of users/{userId}/tasks, which never
+// had a parent doc of its own until this). Only field used so far is
+// dailyNotificationsEnabled - the scheduled Cloud Function that actually
+// sends the email reads this same collection directly via the Admin SDK.
+export function userProfileRef(userId) {
+  return doc(db, "users", userId);
+}
+
+export function watchUserProfile(userId, callback) {
+  return onSnapshot(userProfileRef(userId), (snapshot) => {
+    callback(snapshot.exists() ? snapshot.data() : {});
+  });
+}
+
+export async function setDailyNotifications(userId, enabled) {
+  await setDoc(
+    userProfileRef(userId),
+    { dailyNotificationsEnabled: enabled },
+    { merge: true }
+  );
 }

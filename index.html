@@ -28,7 +28,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/png" href="images/favicon-32.png" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=1.10.0" />
+  <link rel="stylesheet" href="css/styles.css?v=1.11.0" />
 </head>
 <body>
   <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch theme"></button>
@@ -48,6 +48,12 @@
         <button id="sign-in" type="button">Sign in with Google</button>
         <button id="sign-out" class="hidden" type="button">Sign out</button>
       </div>
+
+      <label id="notification-setting" class="notification-setting hidden">
+        <input id="daily-notifications-toggle" type="checkbox" />
+        <span class="switch-track" aria-hidden="true"></span>
+        <span class="switch-label">Daily Notification</span>
+      </label>
 
       <div id="email-auth" class="email-auth">
         <button id="toggle-email-auth" class="text-button" type="button">
@@ -77,6 +83,9 @@
             </button>
             <button id="email-link" class="text-button hidden" type="button">
               Link to my account
+            </button>
+            <button id="email-forgot-password" class="text-button" type="button">
+              Forgot password?
             </button>
           </div>
 
@@ -167,7 +176,7 @@
     <footer class="app-footer">
       <span>Barely Artificial</span>
       <span aria-hidden="true">•</span>
-      <span id="app-version">v1.10.0</span>
+      <span id="app-version">v1.11.0</span>
       <span id="task-count-sep" aria-hidden="true" class="hidden">•</span>
       <span id="task-count" class="hidden"></span>
       <span aria-hidden="true">•</span>
@@ -201,6 +210,6 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-  <script type="module" src="js/app.js?v=1.10.0"></script>
+  <script type="module" src="js/app.js?v=1.11.0"></script>
 </body>
 </html>

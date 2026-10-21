@@ -422,7 +422,7 @@ legacy-note-migration-on-first-edit behaviour, against a real signed-in
 account and genuinely old data — same category of thing that's needed
 Paul's own sign-in to confirm every round so far.
 
-### Custom domain — todo.barelyartificial.app 🔨
+### Custom domain — todo.barelyartificial.app ✅
 Moved off the GitHub Pages default URL to match the rest of the
 portfolio's `xxxxx.barelyartificial.app` convention:
 - `CNAME` file added at the repo root (`todo.barelyartificial.app`).
@@ -439,44 +439,88 @@ portfolio's `xxxxx.barelyartificial.app` convention:
 - `docs/HOSTING.md`'s Live URL and Firebase project sections updated to
   match.
 No app code changed, so no `VERSION.txt`/footer/cache-busting bump for
-this one — same treatment as the earlier repo-rename entry. Still 🔨
-pending: confirming the live site loads and signs in correctly at the new
-URL (GitHub Pages cert issuance can take a few minutes after the first
-push), and Paul + Stephen each reinstalling the PWA from the new URL on
-their devices.
+this one — same treatment as the earlier repo-rename entry. Verified
+live: HTTPS certificate issued, HTTPS enforcement turned on, page loads
+and serves the correct version at the new domain, Google sign-in
+confirmed working by Paul. Still open: Paul + Stephen each reinstalling
+the PWA from the new URL on their own devices, whenever convenient — not
+blocking, the browser URL already works.
 
-## Backlog / ideas
+### v1.11.0 — Daily email notification 🔨
+Paul chose the backend approach explicitly when asked (2026-10-21):
+Firebase Cloud Functions + Cloud Scheduler, with the function calling the
+Resend API directly rather than Firebase's "Trigger Email" extension.
+This is the app's first real backend component — see the new Cloud
+Functions section in `docs/HOSTING.md` for the full setup.
 
-- **Daily email notification.** One notification only, by design: a daily
-  email with everything on the signed-in user's My List plus any Company
-  List items assigned to them. A "Daily Notification" switch near the top
-  of the UI turns it on/off. Splits into two genuinely different pieces:
-  - *The switch itself* — buildable now, no backend needed. Just a
-    `dailyNotificationsEnabled` boolean, stored on a new `users/{uid}`
-    profile doc (nothing currently lives there; today's `users/{uid}/tasks`
-    subcollection has no parent doc). Toggle UI near the top, as asked.
-  - *Actually sending the email* — this is the app's first genuine
-    backend requirement, same category already flagged for the AI-generated
-    priority summary (Phase 2) and the Cloudflare migration question: a
-    static site with no server has nothing running at the scheduled time
-    to send anything. Needs (a) a scheduled job that runs once a day —
-    e.g. a Firebase Cloud Function on a Cloud Scheduler trigger, which
-    pairs naturally with the Firestore backend already in use, or a
-    Cloudflare Worker Cron Trigger if the broader Cloudflare move happens
-    first — and (b) an actual email-sending service (e.g. Firebase's
-    "Trigger Email" extension, Resend, SendGrid) with its own API key
-    held server-side and likely its own cost.
-  Don't build the switch in isolation without first deciding how the
-  sending side will actually work — a toggle that doesn't do anything yet
-  is confusing UI. This, the AI-summary Phase 2, and the Cloudflare
-  migration question are really one decision (what backend, if any) that
-  should land together rather than three separate ad hoc choices.
-  - Paul asked about using a mail-sending library ("mail.js") for this.
-    Noted: needs a scheduled backend regardless of which email
-    library/service ends up formatting and sending the message — a mail
-    library on its own only fires when called, it doesn't make a daily
-    8am call happen by itself. Revisit the specific library once the
-    scheduled-backend decision above is made.
+- **Switch:** a "Daily Notification" toggle near the top of the UI (next
+  to the auth panel), signed-in only. Backed by a new `users/{uid}`
+  profile doc (`dailyNotificationsEnabled` boolean) —
+  `firebase/firestore.js` gained `watchUserProfile()`/
+  `setDailyNotifications()`; `firestore.rules` gained a rule for the
+  profile doc itself (previously only its `tasks` subcollection had one).
+  Deployed and live.
+- **Sending:** `functions/sendDailyNotifications` (new `functions/`
+  directory, its own `package.json`) — a scheduled Cloud Function
+  (currently `0 8 * * *` Europe/London, a placeholder pending Paul's
+  confirmation) that queries everyone with the switch on, builds their
+  task list (personal + anything assigned to them on the Company List,
+  for company accounts), and emails it via Resend. Mirrors the
+  client-side `getNoteLog()`/`latestNote()` logic (kept in sync by hand,
+  since this runs in Cloud Functions' own Node environment, not the
+  browser) so the email shows the same "latest note per task" view as a
+  read-only card.
+- Billing: Firebase project upgraded to the Blaze plan (needed for Cloud
+  Functions at all, even within free-tier usage).
+- Resend: `barelyartificial.app` was already verified as a sending domain
+  from an earlier project; `FROM_EMAIL` defaults to
+  `todo@barelyartificial.app`. `RESEND_API_KEY` is set via Secret Manager
+  by Paul directly in his own terminal — never pasted into chat or typed
+  into a file in the repo.
+Verified: a standalone logic test covering the email-building helpers
+(`latestNote`, HTML-escaping, archived-task filtering, order-sorting,
+empty-list case) — all passed. The client-side switch's show/hide and
+on/off states confirmed visually via mock DOM injection (also caught and
+fixed a real CSS specificity bug: `.notification-setting { display: flex
+}` was overriding the shared `.hidden` utility class since it was
+declared later in the stylesheet with equal specificity — fixed with an
+explicit `.notification-setting.hidden` rule, same pattern already used
+for `.toast.hidden` and `.archive-modal.hidden`). `firestore.rules`
+deployed and live. The Cloud Function itself is **deployed and live**
+(`sendDailyNotifications`, `us-central1`) — along the way, upgraded the
+Functions runtime from Node.js 20 to 22 (20 was about to be
+decommissioned, literally days away) and `firebase-functions` from 6.x to
+7.4.0. Confirmed `RESEND_API_KEY` exists in Secret Manager (checked
+metadata only via `firebase functions:secrets:get`, never the value
+itself) and that the deployed function has been granted access to it.
+Send time confirmed with Paul: 8am Europe/London, as originally
+defaulted. Still 🔨 pending: nobody has watched it actually fire and
+deliver a real email yet — that only happens for real at 8am, or could be
+checked sooner with a manual trigger via Cloud Scheduler if wanted.
+
+### Forgot password 🔨
+Found live, not drip-fed: Paul tried signing in with
+`paul@barelyartificial.com` + password and got "Wrong email or password"
+— the account's email/password credential exists (linked back in v1.2.0,
+confirmed in the Firebase console), so this was very likely just a
+forgotten password, not a missing account. The Firebase console has no
+admin-side "reset this user's password" action (by design — the console
+shouldn't be able to silently set a password on someone's behalf), and
+the app had no self-service way to request one either.
+- `firebase/auth.js` gained `resetPassword(email)`
+  (`sendPasswordResetEmail`); a "Forgot password?" button added to the
+  email-auth form next to Sign in/Create account/Link to my account.
+- Firebase's `sendPasswordResetEmail` deliberately doesn't reveal whether
+  an account exists for the given address (email enumeration
+  protection) — it reports success either way, so the UI's confirmation
+  message doesn't promise anything it can't know.
+Verified live against production: the empty-email validation message,
+and a full round-trip against a nonexistent test address (confirmed it
+resolves successfully with no console errors, without sending anything
+to a real account). Still 🔨 pending: Paul actually requesting a reset
+for his own address and confirming the email arrives and the link works
+— deliberately not tested with his real address as part of this
+verification, to avoid sending him an unplanned reset email mid-build.
 
 ## Noted but deliberately deferred
 
@@ -485,10 +529,10 @@ their devices.
   enough as-is (2026-10-21) — the AI-generated version isn't needed.
   Would have swapped the plain string-building for a true AI-generated
   summary (e.g. via Claude), which needs an LLM call and a backend to
-  hold the API key securely — the app's first real backend requirement,
-  same category as the daily email notification's sending side and the
-  Cloudflare Worker question. Revisit only if that reasoning changes, not
-  by default.
+  hold the API key securely. A backend now exists (Cloud Functions, added
+  in v1.11.0 for the daily email notification), so this would no longer
+  need a fresh backend decision the way it did when first deferred — just
+  revisit only if Paul actually wants it, not by default.
 
 - **Due dates, deadlines, and priority sorting/filtering** — deliberately
   out of scope, not just unbuilt. Position in the list, set by reordering,

@@ -8,13 +8,14 @@ import {
   linkWithCredential,
   verifyBeforeUpdateEmail,
   sendEmailVerification,
+  sendPasswordResetEmail,
   signOut,
   onAuthStateChanged,
   setPersistence,
   browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 
-import { app } from "./config.js?v=1.10.0";
+import { app } from "./config.js?v=1.11.0";
 
 export const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
@@ -51,6 +52,10 @@ export async function linkCompanyEmail(email, password) {
   } else if (!auth.currentUser.emailVerified) {
     await sendEmailVerification(auth.currentUser);
   }
+}
+
+export function resetPassword(email) {
+  return sendPasswordResetEmail(auth, email);
 }
 
 export function signOutUser() {

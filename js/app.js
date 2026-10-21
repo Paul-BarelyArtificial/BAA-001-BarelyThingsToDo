@@ -3,9 +3,10 @@ import {
   signInWithEmail,
   signUpWithEmail,
   linkCompanyEmail,
+  resetPassword,
   signOutUser,
   watchAuth
-} from "../firebase/auth.js?v=1.10.0";
+} from "../firebase/auth.js?v=1.11.0";
 
 import {
   personalTasksCollection,
@@ -16,10 +17,12 @@ import {
   updateTask as updateCloudTask,
   archiveTask as archiveCloudTask,
   restoreTask as restoreCloudTask,
-  updateTaskOrder
-} from "../firebase/firestore.js?v=1.10.0";
+  updateTaskOrder,
+  watchUserProfile,
+  setDailyNotifications
+} from "../firebase/firestore.js?v=1.11.0";
 
-const APP_VERSION = "v1.10.0";
+const APP_VERSION = "v1.11.0";
 const COMPANY_EMAIL_DOMAIN = "barelyartificial.com";
 const COMPANY_MEMBERS = [
   { email: "paul@barelyartificial.com", name: "Paul" },
@@ -60,6 +63,7 @@ const emailAuthPasswordInput = document.querySelector("#email-auth-password");
 const emailSignInButton = document.querySelector("#email-sign-in");
 const emailSignUpButton = document.querySelector("#email-sign-up");
 const emailLinkButton = document.querySelector("#email-link");
+const emailForgotPasswordButton = document.querySelector("#email-forgot-password");
 const emailAuthStatus = document.querySelector("#email-auth-status");
 const offlineBanner = document.querySelector("#offline-banner");
 const exportListButton = document.querySelector("#export-list");
@@ -69,6 +73,8 @@ const archiveModalLabel = document.querySelector("#archive-modal-label");
 const archiveList = document.querySelector("#archive-list");
 const archiveEmpty = document.querySelector("#archive-empty");
 const closeArchiveButton = document.querySelector("#close-archive");
+const notificationSetting = document.querySelector("#notification-setting");
+const dailyNotificationsToggle = document.querySelector("#daily-notifications-toggle");
 
 function getStoredTheme() {
   try {
@@ -147,6 +153,7 @@ let currentUser = null;
 let currentScope = "personal";
 let unsubscribeTasks = null;
 let unsubscribeAssignedTasks = null;
+let unsubscribeUserProfile = null;
 let assignedToMeTasks = [];
 let draggedTaskId = null;
 let editingTaskId = null;
@@ -300,6 +307,25 @@ function subscribeToAssignedTasks() {
       (task) => !task.archivedAt && (task.assignedTo || "").toLowerCase() === myEmail
     );
     renderAssignedSection();
+  });
+}
+
+function subscribeToUserProfile() {
+  if (unsubscribeUserProfile) {
+    unsubscribeUserProfile();
+    unsubscribeUserProfile = null;
+  }
+
+  if (!currentUser) {
+    notificationSetting.classList.add("hidden");
+    dailyNotificationsToggle.checked = false;
+    return;
+  }
+
+  notificationSetting.classList.remove("hidden");
+
+  unsubscribeUserProfile = watchUserProfile(currentUser.uid, (profile) => {
+    dailyNotificationsToggle.checked = Boolean(profile.dailyNotificationsEnabled);
   });
 }
 
@@ -1247,6 +1273,12 @@ watchAuth((user) => {
   updateEmailAuthVisibility();
   subscribeToCurrentList();
   subscribeToAssignedTasks();
+  subscribeToUserProfile();
+});
+
+dailyNotificationsToggle.addEventListener("change", () => {
+  if (!currentUser) return;
+  setDailyNotifications(currentUser.uid, dailyNotificationsToggle.checked);
 });
 
 toggleEmailAuthButton.addEventListener("click", () => {
@@ -1313,6 +1345,24 @@ emailLinkButton.addEventListener("click", async () => {
       `Check your inbox to verify ${email}. Once verified, sign out and back in to unlock the Company List.`
     );
     emailAuthPasswordInput.value = "";
+  } catch (error) {
+    console.error(error);
+    setEmailAuthStatus(emailAuthErrorMessage(error));
+  }
+});
+
+emailForgotPasswordButton.addEventListener("click", async () => {
+  const email = emailAuthEmailInput.value.trim();
+
+  if (!email) {
+    setEmailAuthStatus("Enter your email address first.");
+    return;
+  }
+
+  try {
+    setEmailAuthStatus("Sending reset email…");
+    await resetPassword(email);
+    setEmailAuthStatus(`Check ${email} for a password reset link.`);
   } catch (error) {
     console.error(error);
     setEmailAuthStatus(emailAuthErrorMessage(error));

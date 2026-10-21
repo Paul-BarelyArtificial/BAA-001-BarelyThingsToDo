@@ -1,0 +1,16 @@
+{
+  "name": "barely-things-to-do-functions",
+  "description": "Scheduled Cloud Function that sends the daily notification email (see docs/ROADMAP.md and docs/HOSTING.md in the repo root).",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "deploy": "firebase deploy --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^7.4.0"
+  }
+}

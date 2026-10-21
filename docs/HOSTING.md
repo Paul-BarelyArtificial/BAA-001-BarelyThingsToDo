@@ -56,11 +56,51 @@ bookmarks, and any link from `barelyartificial.com` or elsewhere.
   back.
 - Firestore data model: `users/{userId}/tasks/{taskId}` for personal lists,
   plus `companies/barely-artificial/tasks/{taskId}` for the shared Company
-  List. Access restricted per-collection via `firestore.rules`, deployed
-  with `firebase deploy --only firestore:rules`.
+  List, plus (v1.11.0 on) a `users/{userId}` profile doc holding
+  `dailyNotificationsEnabled`. Access restricted per-collection via
+  `firestore.rules`, deployed with `firebase deploy --only firestore:rules`.
 - The `apiKey` and other values in `firebase/config.js` are the public
   client config Firebase expects to ship to the browser — not secrets.
   Security comes from Auth + Firestore rules, not from hiding this file.
+- Billing: upgraded to the **Blaze** (pay-as-you-go) plan on 2026-10-21,
+  needed for Cloud Functions (see below) — previously on the free Spark
+  plan.
+
+## Cloud Functions (daily notification email)
+Added in v1.11.0 — the app's first real backend component. Source lives in
+`functions/` (its own `package.json`/`node_modules`, not part of the
+static site's dependency-free front end). A single scheduled function,
+`sendDailyNotifications` (`functions/index.js`), runs on a Cloud Scheduler
+trigger: queries `users/{uid}` docs with `dailyNotificationsEnabled ==
+true`, builds each user's task list (personal + anything assigned to them
+on the Company List, for `@barelyartificial.com` accounts) and emails it
+via the [Resend](https://resend.com) API — called directly from the
+function rather than Firebase's "Trigger Email" extension, to avoid an
+extra piece of extension config.
+- **Secret:** `RESEND_API_KEY`, set via Secret Manager — never stored in
+  the repo or in `functions/.env`. Set/rotate it with:
+  ```
+  firebase functions:secrets:set RESEND_API_KEY --project to-do-tomorrow-b01e3
+  ```
+  (prompts interactively; the value never needs to touch a file or chat).
+- **Sending domain:** `barelyartificial.app`, already verified in Resend.
+  `FROM_EMAIL` defaults to `todo@barelyartificial.app` in
+  `functions/index.js` — override by creating a gitignored
+  `functions/.env` with `FROM_EMAIL=...` before deploying, if that ever
+  needs to change.
+- **Schedule:** `0 8 * * *`, `Europe/London` — set in the `onSchedule(...)`
+  config in `functions/index.js`. Confirm/adjust with Paul before relying
+  on it; it's currently a placeholder default.
+- **`.firebaserc`** pins the default project to `to-do-tomorrow-b01e3`, so
+  `firebase` CLI commands don't need `--project` once run from the repo
+  root.
+- Deploy with `firebase deploy --only functions --project to-do-tomorrow-b01e3`
+  (or `npm run deploy` from inside `functions/`) — needs the Blaze plan
+  and the `RESEND_API_KEY` secret set first, or the deploy/invocation
+  fails.
+- No app-code cache-busting involved — this doesn't touch the static site
+  the browser loads, so it's deployed independently of the usual GitHub
+  Pages release process above.
 
 ## Cache-busting (read this before every deploy)
 Every `?v=...` query string across the app has to move together, not just
