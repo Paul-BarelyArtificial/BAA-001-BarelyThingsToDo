@@ -170,6 +170,37 @@ h1 {
   backdrop-filter: blur(16px);
 }
 
+.priority-summary {
+  padding: 20px 22px;
+  margin-bottom: 24px;
+  background: rgba(17, 24, 33, 0.7);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+}
+
+.priority-summary-label {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.priority-summary p {
+  margin: 0;
+}
+
+#priority-summary-text {
+  color: var(--text);
+  line-height: 1.55;
+  font-size: 1rem;
+}
+
+#priority-summary-text strong {
+  font-weight: 800;
+}
+
 label {
   display: block;
   margin-bottom: 10px;

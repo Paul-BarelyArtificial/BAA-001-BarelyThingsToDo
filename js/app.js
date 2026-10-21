@@ -5,7 +5,7 @@ import {
   linkCompanyEmail,
   signOutUser,
   watchAuth
-} from "../firebase/auth.js?v=1.4.0";
+} from "../firebase/auth.js?v=1.5.0";
 
 import {
   personalTasksCollection,
@@ -15,9 +15,9 @@ import {
   deleteTask as deleteCloudTask,
   updateTask as updateCloudTask,
   updateTaskOrder
-} from "../firebase/firestore.js?v=1.4.0";
+} from "../firebase/firestore.js?v=1.5.0";
 
-const APP_VERSION = "v1.4.0";
+const APP_VERSION = "v1.5.0";
 const COMPANY_EMAIL_DOMAIN = "barelyartificial.com";
 
 const taskTitleInput = document.querySelector("#task-title");
@@ -27,6 +27,8 @@ const newPriorityPicker = document.querySelector("#new-priority-picker");
 const addTaskButton = document.querySelector("#add-task");
 const taskList = document.querySelector("#task-list");
 const emptyState = document.querySelector("#empty-state");
+const prioritySummary = document.querySelector("#priority-summary");
+const prioritySummaryText = document.querySelector("#priority-summary-text");
 const charCount = document.querySelector("#char-count");
 const signInButton = document.querySelector("#sign-in");
 const signOutButton = document.querySelector("#sign-out");
@@ -159,6 +161,77 @@ function renderTasks() {
 
     taskList.appendChild(item);
   });
+
+  renderPrioritySummary();
+}
+
+function joinWithAnd(parts) {
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
+function strongTitles(items, color) {
+  return items.map((task) => {
+    const style = color ? ` style="color: ${color}"` : "";
+    return `<strong${style}>${escapeHtml(task.title)}</strong>`;
+  });
+}
+
+function buildPrioritySummaryHtml(currentTasks) {
+  const red = currentTasks.filter((task) => (task.priority || "blue") === "red");
+  const amber = currentTasks.filter((task) => (task.priority || "blue") === "amber");
+  const blue = currentTasks
+    .filter((task) => (task.priority || "blue") === "blue")
+    .slice(0, 5);
+
+  const leadParts = [];
+
+  if (red.length > 0) {
+    const noun = red.length === 1 ? "priority is" : "priorities are";
+    leadParts.push(
+      `Your top ${noun} ${joinWithAnd(strongTitles(red, "var(--priority-red)"))} (high priority)`
+    );
+  }
+
+  if (amber.length > 0) {
+    if (leadParts.length > 0) {
+      leadParts.push(
+        `plus ${joinWithAnd(strongTitles(amber, "var(--priority-amber)"))} (medium priority)`
+      );
+    } else {
+      const noun = amber.length === 1 ? "priority is" : "priorities are";
+      leadParts.push(
+        `Your next ${noun} ${joinWithAnd(strongTitles(amber, "var(--priority-amber)"))} (medium priority)`
+      );
+    }
+  }
+
+  let leadSentence = "";
+  if (leadParts.length > 0) {
+    leadSentence = `${leadParts.join(", ")}.`;
+    leadSentence = leadSentence.charAt(0).toUpperCase() + leadSentence.slice(1);
+  }
+
+  let blueSentence = "";
+  if (blue.length > 0) {
+    const label = leadSentence ? "Further down" : "Next up";
+    blueSentence = `${label}: ${joinWithAnd(strongTitles(blue))}.`;
+  }
+
+  return [leadSentence, blueSentence].filter(Boolean).join(" ");
+}
+
+function renderPrioritySummary() {
+  if (tasks.length === 0) {
+    prioritySummary.classList.add("hidden");
+    prioritySummaryText.innerHTML = "";
+    return;
+  }
+
+  prioritySummaryText.innerHTML = buildPrioritySummaryHtml(tasks);
+  prioritySummary.classList.remove("hidden");
 }
 
 function renderReadOnlyCard(item, task) {

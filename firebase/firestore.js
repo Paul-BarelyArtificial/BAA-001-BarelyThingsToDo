@@ -9,7 +9,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
-import { app } from "./config.js?v=1.4.0";
+import { app } from "./config.js?v=1.5.0";
 
 export const db = getFirestore(app);
 

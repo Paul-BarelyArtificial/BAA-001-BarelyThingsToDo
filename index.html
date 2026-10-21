@@ -14,7 +14,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/png" href="images/favicon-32.png" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=1.4.0" />
+  <link rel="stylesheet" href="css/styles.css?v=1.5.0" />
 </head>
 <body>
   <main class="app-shell">
@@ -90,6 +90,11 @@
       </button>
     </div>
 
+    <section id="priority-summary" class="priority-summary hidden" aria-label="Priority summary">
+      <p class="priority-summary-label">What needs doing</p>
+      <p id="priority-summary-text"></p>
+    </section>
+
     <section class="task-entry" aria-label="Add a task">
       <label for="task-title">What needs doing tomorrow?</label>
       <input
@@ -135,11 +140,11 @@
     <footer class="app-footer">
       <span>Barely Artificial</span>
       <span aria-hidden="true">•</span>
-      <span id="app-version">v1.4.0</span>
+      <span id="app-version">v1.5.0</span>
     </footer>
   </main>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-  <script type="module" src="js/app.js?v=1.4.0"></script>
+  <script type="module" src="js/app.js?v=1.5.0"></script>
 </body>
 </html>

@@ -161,6 +161,32 @@ cards for both read-only and editing states. Still 🔨 pending: the full
 add/edit → Firestore → re-render path with a real signed-in account,
 same as every round so far.
 
+### v1.5.0 — Top-priority summary paragraph (Phase 1: templated) 🔨
+A readable paragraph near the top of the UI, above the add-task form:
+looks at all Red items, then all Amber items, then the first 5 Blue
+items (in list order), and renders what needs doing as a sentence —
+e.g. *"Your top priorities are **Fix invoice bug** and **Call the
+supplier** (high priority), plus **Update the roadmap** (medium
+priority). Further down: Renew the domain, Book the venue, and Email
+Steve."* Task names matching their priority color (red/amber titles
+tinted to match their card outline; blue titles just bold, no color,
+since blue is the default/no-signal case).
+- Phase 1 only, as specced: plain JS string-building in `js/app.js`
+  (`buildPrioritySummaryHtml`) — no AI, no backend, no API cost. Phase 2
+  (true AI-generated summary) stays in the Backlog below.
+- Recomputed every time the task list re-renders, so it always reflects
+  whichever list (My List / Company List) is currently shown. Hidden
+  entirely when the current list has zero tasks.
+- Task titles are HTML-escaped before being wrapped in `<strong>` tags —
+  verified a title containing `<img src=x onerror=...>` renders as
+  inert escaped text, not executable markup.
+Verified with a standalone logic test covering 8 cases (red+amber+blue
+mix, red-only, amber-only, blue-only, empty list, singular vs plural
+wording, the 6-blue-items truncation to 5, and the HTML-injection
+attempt) — all read naturally and escaped correctly. Visual styling
+confirmed via injected mock data. Still 🔨 pending: seeing it render
+against real signed-in data, same as every round so far.
+
 ## Backlog / ideas
 
 - **Move items between My List and Company List, plus a "with" (assignee)
@@ -208,19 +234,14 @@ same as every round so far.
   for sharing or backup without introducing any structure beyond what's
   already there.
 
-- **Top-priority summary paragraph near the top of the UI.** Long-term
-  item. Looks at all Red items, then all Amber items, then the highest
-  (first-ordered) 5 Blue items, and renders a readable paragraph of what
-  needs doing. Two-phase, by design:
-  - *Phase 1 (do first)*: templated, no AI. Plain JS string-building from
-    the selected items — no backend, no API cost, stays entirely within
-    the current static-site architecture.
-  - *Phase 2 (later)*: swap in a true AI-generated summary (e.g. via
-    Claude). This needs an LLM call, and an API key can't live in
-    client-side JS on a static site — it requires a small backend to hold
-    the key securely. That's the app's first real backend requirement, and
-    is worth revisiting alongside the Cloudflare Worker question below
-    rather than bolting on a one-off serverless function.
+- **Top-priority summary paragraph — Phase 2 (AI-generated).** Long-term
+  item. Phase 1 (templated, no AI) shipped in v1.5.0 above. This phase
+  swaps the plain string-building for a true AI-generated summary (e.g.
+  via Claude). This needs an LLM call, and an API key can't live in
+  client-side JS on a static site — it requires a small backend to hold
+  the key securely. That's the app's first real backend requirement, and
+  is worth revisiting alongside the Cloudflare Worker question below
+  rather than bolting on a one-off serverless function.
 
 ## Noted but deliberately deferred
 
