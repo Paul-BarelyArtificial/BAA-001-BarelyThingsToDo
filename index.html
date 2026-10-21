@@ -4,6 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("theme");
+        if (stored === "light" || stored === "dark") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (error) {
+        // localStorage unavailable (private browsing etc.) - falls back
+        // to the prefers-color-scheme media query in css/styles.css.
+      }
+    })();
+  </script>
+
   <title>Barely Things To Do</title>
 
   <meta name="theme-color" content="#2FB9ED" />
@@ -14,9 +28,11 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/png" href="images/favicon-32.png" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=1.6.0" />
+  <link rel="stylesheet" href="css/styles.css?v=1.7.0" />
 </head>
 <body>
+  <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch theme"></button>
+
   <main class="app-shell">
     <header class="app-header">
       <div class="brand-lockup">
@@ -147,7 +163,7 @@
     <footer class="app-footer">
       <span>Barely Artificial</span>
       <span aria-hidden="true">•</span>
-      <span id="app-version">v1.6.0</span>
+      <span id="app-version">v1.7.0</span>
       <span id="task-count-sep" aria-hidden="true" class="hidden">•</span>
       <span id="task-count" class="hidden"></span>
     </footer>
@@ -159,6 +175,6 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-  <script type="module" src="js/app.js?v=1.6.0"></script>
+  <script type="module" src="js/app.js?v=1.7.0"></script>
 </body>
 </html>

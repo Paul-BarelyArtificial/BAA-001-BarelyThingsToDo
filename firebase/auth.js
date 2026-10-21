@@ -14,7 +14,7 @@ import {
   browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 
-import { app } from "./config.js?v=1.6.0";
+import { app } from "./config.js?v=1.7.0";
 
 export const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();

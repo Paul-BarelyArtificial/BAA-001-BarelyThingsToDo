@@ -242,7 +242,110 @@ live (doesn't need Firestore). Still 🔨 pending: the full Firestore-backed
 flows — move, undo-then-restore, swipe, keyboard reorder — against a real
 signed-in account, same as every round so far.
 
+### v1.7.0 — Center header, bolder red/amber, Light/Dark theme switch ✅
+Three UI tweaks in one round.
+
+**Centered header:** `.app-header` (brand lockup/logo, `<h1>`, tagline,
+auth panel) and the `.list-switcher` tabs below it are now centered
+instead of left-aligned — `text-align: center` plus `justify-content:
+center` on the flex rows inside; `.list-switcher` changed from
+`inline-flex` to `flex` with `width: fit-content; margin: 0 auto` so it
+centers independently as a sibling of `.app-header`.
+
+**Bolder red/amber card outlines:** `.task-card[data-priority="red"/
+"amber"]`'s resting (non-hover) border went from `rgba(…, 0.5)` at 1px to
+`rgba(…, 0.85)` at 2px. Blue left untouched, as asked.
+
+**Light/Dark theme switch:** a sun/moon toggle, fixed top-right of the
+page.
+- A full light palette designed from scratch (not inverted dark values)
+  — every CSS custom property re-specified for contrast against a light
+  background, including a new `--accent-contrast` token (button text on
+  the accent color needs to flip from near-black to white once the accent
+  itself gets darker for light-mode contrast) and `--panel-rgb` (so the
+  three different translucent-panel alpha values used around the app stay
+  theme-aware via `rgba(var(--panel-rgb), X)` instead of a hardcoded dark
+  triplet). Found and fixed several hardcoded dark-only colors while
+  auditing the stylesheet for this (panel backgrounds, button text,
+  shadow colors) that would have stayed dark-themed even after switching
+  to light otherwise.
+- Defaults to the device's `prefers-color-scheme`; an explicit toggle
+  choice is remembered in `localStorage` and overrides it from then on.
+  A small inline script in `index.html`'s `<head>` (before the deferred
+  module script) applies any stored choice immediately, to avoid a flash
+  of the wrong theme on load.
+- Priority colors (red/amber/blue) intentionally stay the same across
+  both themes — not redesigned per-theme, kept simple.
+Verified interactively, live, in the browser: toggled both directions,
+confirmed persistence across a reload with no flash of the wrong theme,
+confirmed the bolder red/amber outlines render correctly in both themes,
+checked mobile width. This is the first round where the actual visual
+change could be fully verified without needing a signed-in account, since
+none of it touches Firestore.
+
 ## Backlog / ideas
+
+- **Archive completed tasks for 30 days, restorable to their original
+  list.** Clearing a task (✓) would archive it instead of deleting it;
+  it sits in an Archive view for 30 days, can be restored back to
+  whichever list it was cleared from, and is permanently deleted after
+  that window.
+  - This **replaces** the clear flow shipped in v1.6.0 (toast + Undo +
+    permanent delete after 5s) with a much longer-lived undo — same
+    trigger (✓), different mechanism. Worth deciding explicitly whether
+    the 5s toast still shows too ("Archived — Undo") or whether Archive
+    makes it redundant.
+  - Simplest data model: no copy/move at all — an archived task stays in
+    its own collection (`users/{uid}/tasks` or
+    `companies/barely-artificial/tasks`), just flagged (`archivedAt`
+    timestamp). "Restore to the original list" falls out for free, since
+    it never left. Restored items reappear at their old `order` value,
+    which may now sit oddly among tasks that moved around while it was
+    archived — a minor, acceptable quirk rather than something to solve.
+  - The Archive view itself needs a access point — a third tab next to
+    My List/Company List would compete for visual priority for something
+    used rarely; a lighter-weight link (e.g. near the footer) is probably
+    a better fit for how seldom it'd be opened.
+  - The 30-day expiry needs *something* to actually delete expired
+    archived tasks. Two options: a Firestore TTL policy on `archivedAt`
+    (clean, but needs a one-time toggle in the Firebase console — same
+    category of manual step as enabling Email/Password sign-in was), or
+    client-side cleanup that deletes expired items opportunistically
+    whenever the app loads (no console setup, relies on someone opening
+    the app — fine for a 2-person app, but not instant on day 30).
+  Bigger item — needs the toast-vs-archive overlap and the expiry
+  mechanism decided before building, not just picked up as written.
+
+- **Daily email notification.** One notification only, by design: a daily
+  email with everything on the signed-in user's My List plus any Company
+  List items assigned to them. A "Daily Notification" switch near the top
+  of the UI turns it on/off. Splits into two genuinely different pieces:
+  - *The switch itself* — buildable now, no backend needed. Just a
+    `dailyNotificationsEnabled` boolean, stored on a new `users/{uid}`
+    profile doc (nothing currently lives there; today's `users/{uid}/tasks`
+    subcollection has no parent doc). Toggle UI near the top, as asked.
+  - *Actually sending the email* — this is the app's first genuine
+    backend requirement, same category already flagged for the AI-generated
+    priority summary (Phase 2) and the Cloudflare migration question: a
+    static site with no server has nothing running at the scheduled time
+    to send anything. Needs (a) a scheduled job that runs once a day —
+    e.g. a Firebase Cloud Function on a Cloud Scheduler trigger, which
+    pairs naturally with the Firestore backend already in use, or a
+    Cloudflare Worker Cron Trigger if the broader Cloudflare move happens
+    first — and (b) an actual email-sending service (e.g. Firebase's
+    "Trigger Email" extension, Resend, SendGrid) with its own API key
+    held server-side and likely its own cost.
+  Don't build the switch in isolation without first deciding how the
+  sending side will actually work — a toggle that doesn't do anything yet
+  is confusing UI. This, the AI-summary Phase 2, and the Cloudflare
+  migration question are really one decision (what backend, if any) that
+  should land together rather than three separate ad hoc choices.
+  - Paul asked about using a mail-sending library ("mail.js") for this.
+    Noted: needs a scheduled backend regardless of which email
+    library/service ends up formatting and sending the message — a mail
+    library on its own only fires when called, it doesn't make a daily
+    8am call happen by itself. Revisit the specific library once the
+    scheduled-backend decision above is made.
 
 - **Offline-first PWA.** Currently installable but still needs network for
   Firestore reads/writes; queue adds/reorders locally and sync when back
@@ -258,8 +361,10 @@ signed-in account, same as every round so far.
   via Claude). This needs an LLM call, and an API key can't live in
   client-side JS on a static site — it requires a small backend to hold
   the key securely. That's the app's first real backend requirement, and
-  is worth revisiting alongside the Cloudflare Worker question below
-  rather than bolting on a one-off serverless function.
+  is worth revisiting alongside the Cloudflare Worker question below and
+  the daily email notification backlog item — one backend decision, not
+  three separate ones — rather than bolting on a one-off serverless
+  function.
 
 ## Noted but deliberately deferred
 
@@ -286,4 +391,6 @@ signed-in account, same as every round so far.
   existing task data out of Firestore) for a payoff that's consistency, not
   new functionality. Revisit if there's a concrete driver — e.g. wanting a
   unified `barelyartificial.com` domain instead of the `github.io` subpath,
-  or SSO shared across BA apps — not just to match the pattern.
+  SSO shared across BA apps, or the backend now needed for the AI-summary
+  Phase 2 and daily email notification Backlog items — not just to match
+  the pattern.

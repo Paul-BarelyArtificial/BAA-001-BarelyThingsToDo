@@ -1,17 +1,62 @@
 :root {
   --bg: #070b10;
   --panel: #111821;
+  --panel-rgb: 17, 24, 33;
   --panel-soft: #16202b;
   --text: #f4f7fb;
   --muted: #9aa8b6;
   --accent: #2fb9ed;
   --accent-strong: #1aa5dc;
   --accent-soft: rgba(47, 185, 237, 0.16);
+  --accent-contrast: #051018;
   --border: rgba(244, 247, 251, 0.12);
   --danger: #ff7a7a;
   --shadow: 0 20px 60px rgba(0, 0, 0, 0.32);
+  --shadow-card: 0 16px 40px rgba(0, 0, 0, 0.2);
+  --shadow-card-hover: 0 20px 44px rgba(0, 0, 0, 0.26);
   --priority-red: #ef4444;
   --priority-amber: #f5a623;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f3f6fa;
+    --panel: #ffffff;
+    --panel-rgb: 255, 255, 255;
+    --panel-soft: #e9eff5;
+    --text: #0d1721;
+    --muted: #55646f;
+    --accent: #0f8fc4;
+    --accent-strong: #0c76a3;
+    --accent-soft: rgba(15, 143, 196, 0.12);
+    --accent-contrast: #ffffff;
+    --border: rgba(13, 23, 33, 0.12);
+    --danger: #d64545;
+    --shadow: 0 20px 48px rgba(15, 23, 32, 0.1);
+    --shadow-card: 0 16px 40px rgba(15, 23, 32, 0.08);
+    --shadow-card-hover: 0 20px 44px rgba(15, 23, 32, 0.1);
+    color-scheme: light;
+  }
+}
+
+:root[data-theme="light"] {
+  --bg: #f3f6fa;
+  --panel: #ffffff;
+  --panel-rgb: 255, 255, 255;
+  --panel-soft: #e9eff5;
+  --text: #0d1721;
+  --muted: #55646f;
+  --accent: #0f8fc4;
+  --accent-strong: #0c76a3;
+  --accent-soft: rgba(15, 143, 196, 0.12);
+  --accent-contrast: #ffffff;
+  --border: rgba(13, 23, 33, 0.12);
+  --danger: #d64545;
+  --shadow: 0 20px 48px rgba(15, 23, 32, 0.1);
+  --shadow-card: 0 16px 40px rgba(15, 23, 32, 0.08);
+  --shadow-card-hover: 0 20px 44px rgba(15, 23, 32, 0.1);
+  color-scheme: light;
 }
 
 * {
@@ -22,6 +67,7 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  transition: background-color 200ms ease, color 200ms ease;
   background:
     radial-gradient(circle at top left, rgba(47, 185, 237, 0.18), transparent 28rem),
     radial-gradient(circle at bottom right, rgba(47, 185, 237, 0.08), transparent 28rem),
@@ -50,13 +96,34 @@ button:active {
   padding: 44px 0 72px;
 }
 
+.theme-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--panel-soft);
+  color: var(--text);
+  font-size: 1.1rem;
+  box-shadow: var(--shadow-card);
+  z-index: 50;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent);
+}
+
 .app-header {
   margin-bottom: 32px;
+  text-align: center;
 }
 
 .brand-lockup {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -98,6 +165,7 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   margin-top: 12px;
 }
@@ -127,10 +195,11 @@ h1 {
 }
 
 .list-switcher {
-  display: inline-flex;
+  display: flex;
+  width: fit-content;
   gap: 4px;
   padding: 4px;
-  margin-bottom: 28px;
+  margin: 0 auto 28px;
   background: var(--panel-soft);
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -153,17 +222,17 @@ h1 {
 
 .list-tab.active {
   background: var(--accent);
-  color: #051018;
+  color: var(--accent-contrast);
 }
 
 .list-tab.active:hover {
-  color: #051018;
+  color: var(--accent-contrast);
 }
 
 .task-entry {
   padding: 22px;
   margin-bottom: 28px;
-  background: rgba(17, 24, 33, 0.86);
+  background: rgba(var(--panel-rgb), 0.86);
   border: 1px solid var(--border);
   border-radius: 28px;
   box-shadow: var(--shadow);
@@ -173,7 +242,7 @@ h1 {
 .priority-summary {
   padding: 20px 22px;
   margin-bottom: 24px;
-  background: rgba(17, 24, 33, 0.7);
+  background: rgba(var(--panel-rgb), 0.7);
   border: 1px solid var(--border);
   border-radius: 24px;
 }
@@ -263,7 +332,7 @@ textarea:focus {
   border-radius: 999px;
   padding: 12px 22px;
   background: var(--accent);
-  color: #051018;
+  color: var(--accent-contrast);
   font-weight: 900;
   box-shadow: 0 10px 24px rgba(47, 185, 237, 0.22);
 }
@@ -298,10 +367,10 @@ textarea:focus {
   gap: 14px;
   align-items: start;
   padding: 18px;
-  background: rgba(17, 24, 33, 0.94);
+  background: rgba(var(--panel-rgb), 0.94);
   border: 1px solid var(--border);
   border-radius: 24px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-card);
   transition: transform 180ms ease, opacity 180ms ease, border-color 180ms ease,
     box-shadow 180ms ease;
   animation: task-card-in 200ms ease;
@@ -310,7 +379,7 @@ textarea:focus {
 .task-card:hover {
   transform: translateY(-2px);
   border-color: rgba(47, 185, 237, 0.34);
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.26);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .task-card.clearing {
@@ -325,15 +394,17 @@ textarea:focus {
 
 .task-card:focus-visible {
   outline: none;
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.26), 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+  box-shadow: var(--shadow-card-hover), 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
 }
 
 .task-card[data-priority="red"] {
-  border-color: rgba(239, 68, 68, 0.5);
+  border-width: 2px;
+  border-color: rgba(239, 68, 68, 0.85);
 }
 
 .task-card[data-priority="amber"] {
-  border-color: rgba(245, 166, 35, 0.5);
+  border-width: 2px;
+  border-color: rgba(245, 166, 35, 0.85);
 }
 
 .task-card[data-priority="blue"] {
@@ -493,7 +564,7 @@ textarea:focus {
 .task-card.editing {
   grid-template-columns: auto 1fr;
   border-color: var(--accent);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2), 0 0 0 3px var(--accent-soft);
+  box-shadow: var(--shadow-card), 0 0 0 3px var(--accent-soft);
 }
 
 .task-card.editing:hover {
@@ -572,7 +643,7 @@ textarea:focus {
 
 .assigned-card:hover {
   transform: none;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-card);
 }
 
 .assigned-badge {
@@ -602,6 +673,7 @@ textarea:focus {
 .auth-panel {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   margin-top: 22px;
   flex-wrap: wrap;
@@ -666,6 +738,14 @@ textarea:focus {
 @media (max-width: 520px) {
   .app-shell {
     padding-top: 32px;
+  }
+
+  .theme-toggle {
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
   }
 
   .brand-mark {

@@ -5,7 +5,7 @@ import {
   linkCompanyEmail,
   signOutUser,
   watchAuth
-} from "../firebase/auth.js?v=1.6.0";
+} from "../firebase/auth.js?v=1.7.0";
 
 import {
   personalTasksCollection,
@@ -15,16 +15,18 @@ import {
   deleteTask as deleteCloudTask,
   updateTask as updateCloudTask,
   updateTaskOrder
-} from "../firebase/firestore.js?v=1.6.0";
+} from "../firebase/firestore.js?v=1.7.0";
 
-const APP_VERSION = "v1.6.0";
+const APP_VERSION = "v1.7.0";
 const COMPANY_EMAIL_DOMAIN = "barelyartificial.com";
 const COMPANY_MEMBERS = [
   { email: "paul@barelyartificial.com", name: "Paul" },
   { email: "stephen@barelyartificial.com", name: "Stephen" }
 ];
 const CLEAR_UNDO_WINDOW_MS = 5000;
+const THEME_STORAGE_KEY = "theme";
 
+const themeToggleButton = document.querySelector("#theme-toggle");
 const taskTitleInput = document.querySelector("#task-title");
 const taskNotesInput = document.querySelector("#task-notes");
 const toggleNotesButton = document.querySelector("#toggle-notes");
@@ -57,6 +59,61 @@ const emailSignInButton = document.querySelector("#email-sign-in");
 const emailSignUpButton = document.querySelector("#email-sign-up");
 const emailLinkButton = document.querySelector("#email-link");
 const emailAuthStatus = document.querySelector("#email-auth-status");
+
+function getStoredTheme() {
+  try {
+    return localStorage.getItem(THEME_STORAGE_KEY);
+  } catch (error) {
+    return null;
+  }
+}
+
+function setStoredTheme(theme) {
+  try {
+    if (theme) {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } else {
+      localStorage.removeItem(THEME_STORAGE_KEY);
+    }
+  } catch (error) {
+    // localStorage unavailable (private browsing etc.) - theme just
+    // won't persist across visits; applyTheme() still works for this one.
+  }
+}
+
+function currentEffectiveTheme() {
+  const stored = getStoredTheme();
+  if (stored === "light" || stored === "dark") return stored;
+  return window.matchMedia("(prefers-color-scheme: light)").matches
+    ? "light"
+    : "dark";
+}
+
+function updateThemeToggleIcon() {
+  const effective = currentEffectiveTheme();
+  themeToggleButton.textContent = effective === "light" ? "\u{1F319}" : "☀️";
+  themeToggleButton.setAttribute(
+    "aria-label",
+    effective === "light" ? "Switch to dark theme" : "Switch to light theme"
+  );
+}
+
+function applyTheme(theme) {
+  if (theme === "light" || theme === "dark") {
+    document.documentElement.setAttribute("data-theme", theme);
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+  }
+  updateThemeToggleIcon();
+}
+
+themeToggleButton.addEventListener("click", () => {
+  const next = currentEffectiveTheme() === "light" ? "dark" : "light";
+  setStoredTheme(next);
+  applyTheme(next);
+});
+
+applyTheme(getStoredTheme());
 
 let tasks = [];
 let currentUser = null;
