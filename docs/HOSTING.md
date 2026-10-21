@@ -20,17 +20,27 @@
   isn't a supported case.
 
 ## Live URL
-**https://paul-barelyartificial.github.io/BAA-001-BarelyThingsToDo/**
+**https://todo.barelyartificial.app**
 
-This URL is tied to the repo name — if the repo is ever renamed again, the
-Pages URL changes with it and the old one 404s immediately (no redirect,
-unlike the `github.com` repo page and git URLs, which GitHub does redirect).
-Previous URL (now dead): `https://paul-barelyartificial.github.io/to-do-tomorrow/`
-— dead as of the 2026-10-20 rename to `BAA-001-BarelyThingsToDo`.
+Custom domain (2026-10-21), matching the rest of the portfolio's
+`xxxxx.barelyartificial.app` convention. Backed by a `CNAME` file at the
+repo root — GitHub Pages serves the site on this domain as long as that
+file exists and isn't overwritten or removed (e.g. by a force-push).
+DNS: a `CNAME` record for `todo` → `paul-barelyartificial.github.io` in
+the `barelyartificial.app` zone (Cloudflare, proxy **off** — GitHub Pages
+needs to see the real DNS record directly to issue its HTTPS certificate;
+proxying through Cloudflare breaks that).
 
-If this ever happens again: update any installed PWA (phone/desktop — delete
-and reinstall from the new URL), browser bookmarks, and any link from
-`barelyartificial.com` or elsewhere.
+Old URL (now dead): `https://paul-barelyartificial.github.io/BAA-001-BarelyThingsToDo/`
+— GitHub Pages redirects it to the custom domain above once a `CNAME` file
+is present, same no-redirect caveat applies if the repo is ever renamed
+again. Before that, the URL was
+`https://paul-barelyartificial.github.io/to-do-tomorrow/`, dead since the
+2026-10-20 repo rename.
+
+If the domain or repo ever changes again: update any installed PWA
+(phone/desktop — delete and reinstall from the new URL), browser
+bookmarks, and any link from `barelyartificial.com` or elsewhere.
 
 ## Firebase project
 - Project ID: `to-do-tomorrow-b01e3` (unchanged by the GitHub repo rename —
@@ -39,8 +49,11 @@ and reinstall from the new URL), browser bookmarks, and any link from
   addresses (Email/Password provider enabled manually in the Firebase
   console — see `firebase/auth.js`). Firebase Authentication requires the
   serving domain to be in the project's authorized domains list —
-  `paul-barelyartificial.github.io` is a domain grant (path-independent),
-  so the repo rename did not require any Firebase config change.
+  `todo.barelyartificial.app` was added manually in the Firebase console
+  (Authentication → Settings → Authorized domains) for the 2026-10-21
+  custom domain move; `paul-barelyartificial.github.io` is left in the
+  list rather than removed, in case the custom domain ever needs rolling
+  back.
 - Firestore data model: `users/{userId}/tasks/{taskId}` for personal lists,
   plus `companies/barely-artificial/tasks/{taskId}` for the shared Company
   List. Access restricted per-collection via `firestore.rules`, deployed

@@ -422,27 +422,30 @@ legacy-note-migration-on-first-edit behaviour, against a real signed-in
 account and genuinely old data — same category of thing that's needed
 Paul's own sign-in to confirm every round so far.
 
-## Backlog / ideas
+### Custom domain — todo.barelyartificial.app 🔨
+Moved off the GitHub Pages default URL to match the rest of the
+portfolio's `xxxxx.barelyartificial.app` convention:
+- `CNAME` file added at the repo root (`todo.barelyartificial.app`).
+- DNS: Paul added a `CNAME` record (`todo` → `paul-barelyartificial.github.io`)
+  in the `barelyartificial.app` zone on Cloudflare, proxy off — confirmed
+  resolving before the `CNAME` file was pushed, specifically to avoid a
+  window where the old URL (which GitHub redirects once a custom domain
+  is configured) pointed at a domain that didn't resolve yet.
+- `todo.barelyartificial.app` added to Firebase Auth's authorized domains
+  (Authentication → Settings → Authorized domains) — done manually by
+  Paul in the Firebase console, same category as the Email/Password
+  provider step in v1.2.0. `paul-barelyartificial.github.io` left in the
+  list rather than removed, as a rollback path.
+- `docs/HOSTING.md`'s Live URL and Firebase project sections updated to
+  match.
+No app code changed, so no `VERSION.txt`/footer/cache-busting bump for
+this one — same treatment as the earlier repo-rename entry. Still 🔨
+pending: confirming the live site loads and signs in correctly at the new
+URL (GitHub Pages cert issuance can take a few minutes after the first
+push), and Paul + Stephen each reinstalling the PWA from the new URL on
+their devices.
 
-- **Custom domain: `todo.barelyartificial.app`.** Move off the GitHub
-  Pages default URL to match the other portfolio apps' `xxxxx.
-  barelyartificial.app` convention — this app's live URL is currently
-  `https://paul-barelyartificial.github.io/BAA-001-BarelyThingsToDo/`
-  (see `docs/HOSTING.md`'s Live URL section), tied to the repo name with
-  no redirect if it ever changes again. Needs, when built:
-  - A `CNAME` file at the repo root (GitHub Pages custom domain) plus a
-    DNS record for `todo.barelyartificial.app` pointing at GitHub Pages —
-    whoever controls the `barelyartificial.app` DNS zone needs to add it.
-  - `todo.barelyartificial.app` added to Firebase Auth's authorized
-    domains list (`docs/HOSTING.md` notes sign-in requires the serving
-    domain to be authorized there) — otherwise sign-in breaks on the new
-    domain even though the page itself loads fine.
-  - Every installed PWA (phone/desktop) needs deleting and reinstalling
-    from the new URL, same caveat as the earlier repo-rename URL change —
-    worth telling Steve too, not just Paul.
-  - `docs/HOSTING.md`'s Live URL section updated once moved.
-  No need to build this now — logged for whenever the domain move
-  happens.
+## Backlog / ideas
 
 - **Daily email notification.** One notification only, by design: a daily
   email with everything on the signed-in user's My List plus any Company
