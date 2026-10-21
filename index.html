@@ -28,7 +28,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/png" href="images/favicon-32.png" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=1.13.0" />
+  <link rel="stylesheet" href="css/styles.css?v=1.14.0" />
 </head>
 <body>
   <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch theme"></button>
@@ -134,10 +134,19 @@
         autocomplete="off"
       />
 
-      <div id="new-priority-picker" class="priority-picker" role="radiogroup" aria-label="Priority">
-        <button class="priority-dot" type="button" data-priority="red" aria-label="High priority"></button>
-        <button class="priority-dot" type="button" data-priority="amber" aria-label="Medium priority"></button>
-        <button class="priority-dot selected" type="button" data-priority="blue" aria-label="Default priority"></button>
+      <div class="entry-meta-row">
+        <div id="new-priority-picker" class="priority-picker" role="radiogroup" aria-label="Priority">
+          <button class="priority-dot" type="button" data-priority="red" aria-label="High priority"></button>
+          <button class="priority-dot" type="button" data-priority="amber" aria-label="Medium priority"></button>
+          <button class="priority-dot selected" type="button" data-priority="blue" aria-label="Default priority"></button>
+        </div>
+        <button
+          id="new-notify-toggle"
+          class="notify-toggle selected"
+          type="button"
+          aria-pressed="true"
+          aria-label="Include in daily notification"
+        >🔔</button>
       </div>
 
       <div id="new-assignee-picker" class="assignee-picker hidden" role="radiogroup" aria-label="Assigned to"></div>
@@ -176,7 +185,7 @@
     <footer class="app-footer">
       <span>Barely Artificial</span>
       <span aria-hidden="true">•</span>
-      <span id="app-version">v1.13.0</span>
+      <span id="app-version">v1.14.0</span>
       <span id="task-count-sep" aria-hidden="true" class="hidden">•</span>
       <span id="task-count" class="hidden"></span>
       <span aria-hidden="true">•</span>
@@ -210,6 +219,6 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-  <script type="module" src="js/app.js?v=1.13.0"></script>
+  <script type="module" src="js/app.js?v=1.14.0"></script>
 </body>
 </html>

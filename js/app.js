@@ -6,7 +6,7 @@ import {
   resetPassword,
   signOutUser,
   watchAuth
-} from "../firebase/auth.js?v=1.13.0";
+} from "../firebase/auth.js?v=1.14.0";
 
 import {
   personalTasksCollection,
@@ -20,9 +20,9 @@ import {
   updateTaskOrder,
   watchUserProfile,
   setDailyNotifications
-} from "../firebase/firestore.js?v=1.13.0";
+} from "../firebase/firestore.js?v=1.14.0";
 
-const APP_VERSION = "v1.13.0";
+const APP_VERSION = "v1.14.0";
 const COMPANY_EMAIL_DOMAIN = "barelyartificial.com";
 const COMPANY_MEMBERS = [
   { email: "paul@barelyartificial.com", name: "Paul" },
@@ -38,6 +38,7 @@ const taskNotesInput = document.querySelector("#task-notes");
 const toggleNotesButton = document.querySelector("#toggle-notes");
 const newPriorityPicker = document.querySelector("#new-priority-picker");
 const newAssigneePicker = document.querySelector("#new-assignee-picker");
+const newNotifyToggle = document.querySelector("#new-notify-toggle");
 const addTaskButton = document.querySelector("#add-task");
 const taskList = document.querySelector("#task-list");
 const emptyState = document.querySelector("#empty-state");
@@ -165,6 +166,8 @@ let editDraftAssignee = "";
 let editNotesOpen = false;
 let newTaskPriority = "blue";
 let newTaskAssignee = "";
+let newTaskNotify = true;
+let editDraftNotify = true;
 let toastTimeoutId = null;
 let swipeState = null;
 
@@ -177,6 +180,13 @@ let swipeState = null;
 // instead of flickering back into the active list for that one frame.
 function isArchived(task) {
   return task.archivedAt !== undefined;
+}
+
+// Defaults to true (included) so existing tasks, which predate this field,
+// keep today's "daily email includes everything" behaviour until someone
+// explicitly turns a task off - only an explicit false excludes it.
+function notifyEnabled(task) {
+  return task.notifyMe !== false;
 }
 
 function hasCompanyAccess(user) {
@@ -604,6 +614,9 @@ function renderReadOnlyCard(item, task) {
     : "";
 
   const noteText = latestNote(task);
+  const notifyOffHtml = notifyEnabled(task)
+    ? ""
+    : `<p class="task-notify-off">🔕 Not in daily notification</p>`;
 
   item.innerHTML = `
     <span class="drag-handle" aria-hidden="true">⋮⋮</span>
@@ -611,6 +624,7 @@ function renderReadOnlyCard(item, task) {
       <h2>${escapeHtml(task.title)}</h2>
       ${noteText ? `<p>${escapeHtml(noteText)}</p>` : ""}
       ${assigneeHtml}
+      ${notifyOffHtml}
     </div>
     <div class="task-actions">
       <button class="edit-button" type="button" aria-label="Edit task">✎</button>
@@ -646,10 +660,17 @@ function renderEditingCard(item, task) {
     <div class="task-content task-edit-form">
       <input class="edit-title-input" type="text" maxlength="100" autocomplete="off" />
 
-      <div class="priority-picker" role="radiogroup" aria-label="Priority">
-        <button class="priority-dot" type="button" data-priority="red" aria-label="High priority"></button>
-        <button class="priority-dot" type="button" data-priority="amber" aria-label="Medium priority"></button>
-        <button class="priority-dot" type="button" data-priority="blue" aria-label="Default priority"></button>
+      <div class="entry-meta-row">
+        <div class="priority-picker" role="radiogroup" aria-label="Priority">
+          <button class="priority-dot" type="button" data-priority="red" aria-label="High priority"></button>
+          <button class="priority-dot" type="button" data-priority="amber" aria-label="Medium priority"></button>
+          <button class="priority-dot" type="button" data-priority="blue" aria-label="Default priority"></button>
+        </div>
+        <button
+          class="edit-notify-toggle notify-toggle"
+          type="button"
+          aria-label="Include in daily notification"
+        >🔔</button>
       </div>
 
       ${
@@ -691,6 +712,11 @@ function renderEditingCard(item, task) {
     dot.classList.toggle("selected", dot.dataset.priority === editDraftPriority);
   });
 
+  const notifyToggle = item.querySelector(".edit-notify-toggle");
+  notifyToggle.classList.toggle("selected", editDraftNotify);
+  notifyToggle.setAttribute("aria-pressed", String(editDraftNotify));
+  notifyToggle.textContent = editDraftNotify ? "🔔" : "🔕";
+
   const assigneePicker = item.querySelector(".edit-assignee-picker");
   if (assigneePicker) {
     populateAssigneePicker(assigneePicker, editDraftAssignee);
@@ -703,6 +729,7 @@ function enterEditMode(task) {
   editDraftNotes = ""; // the box is for adding a NEW note, not editing old ones
   editDraftPriority = task.priority || "blue";
   editDraftAssignee = task.assignedTo || "";
+  editDraftNotify = notifyEnabled(task);
   editNotesOpen = getNoteLog(task).length > 0;
 
   renderTasks();
@@ -724,6 +751,7 @@ function exitEditMode() {
   editDraftNotes = "";
   editDraftPriority = "blue";
   editDraftAssignee = "";
+  editDraftNotify = true;
   editNotesOpen = false;
 
   renderTasks();
@@ -744,7 +772,7 @@ async function saveEditedTask() {
     ? [...existingLog, { text: newNoteText, createdAt: Date.now() }]
     : existingLog;
 
-  const updates = { title, noteLog, priority: editDraftPriority };
+  const updates = { title, noteLog, priority: editDraftPriority, notifyMe: editDraftNotify };
   if (currentScope === "company") {
     updates.assignedTo = editDraftAssignee;
   }
@@ -766,6 +794,26 @@ function setNewTaskPriority(priority) {
   });
 }
 
+function setNewTaskNotify(enabled) {
+  newTaskNotify = enabled;
+  newNotifyToggle.classList.toggle("selected", enabled);
+  newNotifyToggle.setAttribute("aria-pressed", String(enabled));
+  newNotifyToggle.textContent = enabled ? "🔔" : "🔕";
+}
+
+function newTaskPayload(title) {
+  const payload = {
+    title,
+    noteLog: [],
+    priority: newTaskPriority,
+    notifyMe: newTaskNotify
+  };
+  if (currentScope === "company") {
+    payload.assignedTo = newTaskAssignee;
+  }
+  return payload;
+}
+
 async function addTask() {
   const title = taskTitleInput.value.trim();
   const noteText = taskNotesInput.value.trim();
@@ -780,10 +828,7 @@ async function addTask() {
   }
 
   const noteLog = noteText ? [{ text: noteText, createdAt: Date.now() }] : [];
-  const payload = { title, noteLog, priority: newTaskPriority };
-  if (currentScope === "company") {
-    payload.assignedTo = newTaskAssignee;
-  }
+  const payload = { ...newTaskPayload(title), noteLog };
 
   await saveCloudTask(tasksRef, payload);
 
@@ -792,7 +837,34 @@ async function addTask() {
   charCount.textContent = "0 / 100";
   setNewTaskPriority("blue");
   setNewTaskAssignee("");
+  setNewTaskNotify(true);
   taskTitleInput.focus();
+}
+
+// Pasting multiple lines (e.g. copied from an email or notes app) creates
+// one task per line instead of mashing them into a single garbled title -
+// each line just gets the current priority/notify/assignee defaults, same
+// as typing one task at a time; add notes or change those individually
+// afterward via the normal edit flow, same as any other task.
+async function addMultipleTasks(lines) {
+  const tasksRef = currentTasksRef();
+
+  if (!tasksRef) {
+    alert("Please sign in before adding tasks.");
+    return;
+  }
+
+  const titles = lines.map((line) => line.slice(0, 100)).filter(Boolean);
+  if (titles.length === 0) return;
+
+  for (const title of titles) {
+    await saveCloudTask(tasksRef, newTaskPayload(title));
+  }
+
+  taskTitleInput.value = "";
+  charCount.textContent = "0 / 100";
+  taskTitleInput.focus();
+  showToast(`Added ${titles.length} task${titles.length === 1 ? "" : "s"}`);
 }
 
 function clearTask(id) {
@@ -820,7 +892,8 @@ async function moveTask(task) {
   const payload = {
     title: task.title,
     noteLog: getNoteLog(task),
-    priority: task.priority || "blue"
+    priority: task.priority || "blue",
+    notifyMe: notifyEnabled(task)
   };
   if (destScope === "company") {
     payload.assignedTo = "";
@@ -994,7 +1067,24 @@ taskTitleInput.addEventListener("keydown", (event) => {
   }
 });
 
+taskTitleInput.addEventListener("paste", (event) => {
+  const text = event.clipboardData?.getData("text") || "";
+  const lines = text
+    .split(/\r\n|\r|\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length <= 1) return; // single line (or nothing) - let it paste normally
+
+  event.preventDefault();
+  addMultipleTasks(lines);
+});
+
 toggleNotesButton.addEventListener("click", toggleNotes);
+
+newNotifyToggle.addEventListener("click", () => {
+  setNewTaskNotify(!newTaskNotify);
+});
 
 newPriorityPicker.addEventListener("click", (event) => {
   const dot = event.target.closest(".priority-dot");
@@ -1048,6 +1138,15 @@ taskList.addEventListener("click", (event) => {
     item?.querySelectorAll(".priority-dot").forEach((dot) => {
       dot.classList.toggle("selected", dot.dataset.priority === editDraftPriority);
     });
+    return;
+  }
+
+  const editNotifyToggle = event.target.closest(".edit-notify-toggle");
+  if (editNotifyToggle) {
+    editDraftNotify = !editDraftNotify;
+    editNotifyToggle.classList.toggle("selected", editDraftNotify);
+    editNotifyToggle.setAttribute("aria-pressed", String(editDraftNotify));
+    editNotifyToggle.textContent = editDraftNotify ? "🔔" : "🔕";
     return;
   }
 

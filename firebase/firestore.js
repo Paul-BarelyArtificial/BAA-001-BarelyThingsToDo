@@ -13,7 +13,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
-import { app } from "./config.js?v=1.13.0";
+import { app } from "./config.js?v=1.14.0";
 
 // Persistent (IndexedDB-backed) local cache: reads work from cache while
 // offline, and writes queue locally and sync automatically once back
@@ -58,6 +58,7 @@ export async function saveTask(tasksRef, task) {
     title: task.title,
     noteLog: task.noteLog || [],
     priority: task.priority || "blue",
+    notifyMe: task.notifyMe !== false,
     order: Date.now(),
     createdAt: serverTimestamp()
   };

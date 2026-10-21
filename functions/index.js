@@ -50,10 +50,17 @@ function renderTaskListHtml(taskList) {
   return `<ol>${items}</ol>`;
 }
 
+// Mirrors js/app.js's notifyEnabled() - defaults to true (included) so
+// tasks created before this field existed keep the original "daily email
+// includes everything" behaviour; only an explicit false excludes one.
+function notifyEnabled(task) {
+  return task.notifyMe !== false;
+}
+
 function sortByOrder(docs) {
   return docs
     .map((document) => document.data())
-    .filter((task) => !task.archivedAt)
+    .filter((task) => !task.archivedAt && notifyEnabled(task))
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
@@ -136,8 +143,7 @@ async function buildAndSendFor(db, apiKey, profileDoc) {
   }
 }
 
-// Schedule/timezone: confirm with Paul before relying on this - 8am
-// Europe/London is a placeholder default, see docs/ROADMAP.md.
+// Schedule/timezone confirmed with Paul: 8am Europe/London.
 exports.sendDailyNotifications = onSchedule(
   {
     schedule: "0 8 * * *",

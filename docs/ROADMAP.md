@@ -590,6 +590,58 @@ real signed-in flow (not simulated data) over a few clear actions to
 confirm the flicker is genuinely gone in practice, same category as
 other things needing Paul's own sign-in to fully confirm.
 
+### v1.14.0 — Multi-line paste, per-task notify toggle ✅
+Two requests in one round.
+
+**Paste multiple lines → multiple tasks.** Pasting text with more than
+one line into "Add a task..." (e.g. copied from an email) now creates
+one task per non-empty line — each gets the current priority/notify/
+assignee defaults, no notes, added in the pasted order, with a toast
+("Added N tasks"). A single-line paste is untouched — falls through to
+the normal browser paste, so nothing changes for the common case.
+Detected via the `paste` event's raw clipboard data (not the input's
+`.value` after the fact, which a single-line `<input>` would have
+already flattened/mangled).
+
+**Per-task "notify me" toggle.** Previously the daily email (v1.11.0)
+included everything, with no way to exclude individual items. A bell
+toggle (🔔/🔕) next to the priority dots — in both the add form and the
+inline edit form — controls a new `notifyMe` boolean per task; the
+Cloud Function now skips any task with `notifyMe === false` when
+building the email. Decided with Paul before building (2026-10-21):
+defaults to **on** for every task, including all existing ones that
+predate the field, so today's "daily email includes everything"
+behaviour doesn't silently change for anyone who doesn't touch the new
+toggle — you only need to flip individual tasks off. A small "🔕 Not in
+daily notification" label shows on a read-only card when it's off, kept
+deliberately understated since off is meant to be the exception, not
+the common case.
+- `firebase/firestore.js`'s `saveTask()` always writes `notifyMe`
+  explicitly now (`true` unless the caller says otherwise), same
+  pattern as `priority`; `js/app.js`'s `notifyEnabled()` and
+  `functions/index.js`'s mirror of it both treat an absent field as
+  "on," so pre-v1.14.0 tasks aren't affected.
+- Applies to both personal tasks and Company List items assigned to
+  you — "notify me" is a property of the task, not the list it's in.
+- Cloud Function redeployed with the new filter; also set up an
+  artifact cleanup policy for the Functions container images
+  (`firebase functions:artifacts:setpolicy`) while in there — this had
+  been nagging on every deploy since v1.11.0 without actually blocking
+  anything, finally dealt with.
+Verified: a standalone logic test for both features (multi-line split
+behaviour — blank lines, CRLF, single-line passthrough, 100-char
+truncation; and the notify filter's default-on/explicit-off behaviour,
+including the Cloud Function's archived+notify combined filter) — all
+passed. In the browser: dispatched real `paste` events confirming a
+multi-line paste is intercepted (and correctly hits the same
+"please sign in" guard `addTask()` already uses) while a single-line
+paste is left alone; the add-form and edit-form bell toggles both
+confirmed clickable and visually correct in both states via injected
+markup matching the real render output. No console errors. Still open:
+the real signed-in paste → multiple Firestore writes path, and actually
+receiving a daily email with an off-toggled task excluded — same
+category as everything else needing Paul's own sign-in to confirm.
+
 ## Noted but deliberately deferred
 
 - **Top-priority summary paragraph — Phase 2 (AI-generated).** Phase 1
