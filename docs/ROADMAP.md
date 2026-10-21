@@ -187,44 +187,62 @@ attempt) — all read naturally and escaped correctly. Visual styling
 confirmed via injected mock data. Still 🔨 pending: seeing it render
 against real signed-in data, same as every round so far.
 
+### v1.6.0 — Move between lists, assignees, undo, swipe, keyboard, footer count 🔨
+Five backlog items in one round, all confirmed-shape or quick items.
+
+**Move between lists + "with" assignee + "From Company List" flag:**
+- A move (⇄) button on each task card, next to edit/clear, moves it to
+  the other list — copy-then-delete across Firestore collections (they're
+  separate collections with separate `order` sequences), landing at the
+  end of the destination list. Only shown when valid: always on the
+  Company List (moving to My List needs no special access), and on My
+  List only for accounts with Company List access (no point offering a
+  move that would just fail).
+- `assignedTo` field on company tasks — a single assignee, picked from a
+  small hardcoded roster (`COMPANY_MEMBERS` in `js/app.js`: Paul,
+  Stephen, or Unassigned), shown as pills in the add form and the inline
+  edit form, company scope only. A card shows "With Paul" etc. when set.
+- Company items assigned to the signed-in user also show on their My
+  List, in a separate "From Company List" section — read-only (no edit/
+  clear/drag from there, deliberately, to avoid wiring cross-collection
+  actions into a view that's really just a reminder) — switch to the
+  Company List to actually act on one. Own Firestore subscription,
+  active only when viewing My List with company access.
+
+**Undo after clearing:** clearing a task now shows a toast ("Cleared
+'X' — Undo") instead of deleting immediately. The Firestore delete is
+delayed 5s behind the scenes; clicking Undo within that window cancels
+it and restores the task. Found and fixed a real bug while building
+this: `saveTaskOrderFromDom()` (used by drag-and-drop) rebuilt `tasks`
+purely from the current DOM order, which excludes anything mid-undo-
+window — a reorder during that window would have silently dropped the
+pending-clear task from memory, breaking Undo. Fixed to preserve it.
+
+**Swipe-to-clear on mobile:** swiping a card left past a threshold
+triggers the same clear-with-undo flow. Custom touch handling (not
+SortableJS, which only owns the drag-handle) that distinguishes
+horizontal swipes from vertical scrolling and backs off cleanly if it's
+a scroll.
+
+**Keyboard-only flow:** read-only cards are now focusable
+(`tabindex="0"`); with one focused, Arrow Up/Down reorders it and
+persists via the same `updateTaskOrder()` drag-and-drop already uses.
+Enter-to-add already existed from v1.0.0.
+
+**Item count in the footer:** "N things to do" next to the version
+number, scoped to whichever list is currently shown, hidden when it's
+empty.
+
+Verified: standalone logic tests (reorder splicing, move payload shape
+for both directions) all correct; visual styling for every new UI piece
+(task-actions row, assignee pills, "With" label, From Company List
+section, toast, mobile width) confirmed via injected markup matching the
+real render output; assignee-pill click-to-select confirmed interactively
+live (doesn't need Firestore). Still 🔨 pending: the full Firestore-backed
+flows — move, undo-then-restore, swipe, keyboard reorder — against a real
+signed-in account, same as every round so far.
+
 ## Backlog / ideas
-
-- **Move items between My List and Company List, plus a "with" (assignee)
-  field on company items, surfaced back on the personal list.** Three
-  related pieces:
-  - *Move*: an action on a task card to move it from one list to the
-    other (both directions, not just personal → company). Mechanically
-    this is a copy-then-delete across Firestore collections, not a simple
-    update — `users/{uid}/tasks` and `companies/barely-artificial/tasks`
-    are different collections, each with their own `order` sequence, so a
-    moved item gets a fresh order value (e.g. end of the destination list)
-    rather than trying to preserve its old position.
-  - *"With" metadata*: an `assignedTo` field on company list items, so a
-    task can show who it's with. A single assignee, picked from current
-    Company List members (today just Paul and Steve; unassigned is also
-    valid) — not free text, not multiple assignees.
-  - *Surfaced on personal list*: a company item assigned to the signed-in
-    user also appears on their My List, flagged "From Company List," as a
-    separate, non-reorderable section (not interleaved with your own
-    freely-draggable items) — its real position and order still live on
-    the Company List, so reordering/clearing it there is what actually
-    changes it.
-  Shape confirmed with Paul (2026-10-20) — deliberately kept to the
-  simplest version of each piece above rather than anything more
-  elaborate. Ready to build as written when picked up.
-
-- **Undo after clearing.** A brief "Undo" toast instead of an instant
-  permanent delete — forgives a mis-tap without building out a full
-  trash/archive.
-
-- **Swipe-to-clear on mobile.** Swipe a task away instead of opening it to
-  delete. Faster, and matches the drag-and-drop interaction already there.
-
-- **Keyboard-only flow on desktop.** Type, Enter to add, arrow keys to
-  reorder the focused item — no mouse needed for the whole workflow.
-
-- **Item count in the footer.** e.g. "7 things to do," next to the version
-  number. No new concepts, just a glance-metric.
 
 - **Offline-first PWA.** Currently installable but still needs network for
   Firestore reads/writes; queue adds/reorders locally and sync when back

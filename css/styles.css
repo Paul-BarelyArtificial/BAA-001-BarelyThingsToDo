@@ -323,6 +323,11 @@ textarea:focus {
   border-color: var(--accent);
 }
 
+.task-card:focus-visible {
+  outline: none;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.26), 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}
+
 .task-card[data-priority="red"] {
   border-color: rgba(239, 68, 68, 0.5);
 }
@@ -384,6 +389,34 @@ textarea:focus {
   box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px currentColor;
 }
 
+.assignee-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.assignee-pill {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 7px 14px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.assignee-pill:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+.assignee-pill.selected {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 .drag-handle {
   padding-top: 2px;
   color: var(--muted);
@@ -403,19 +436,38 @@ textarea:focus {
   line-height: 1.45;
 }
 
+.task-assignee {
+  margin: 8px 0 0;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .task-actions {
   display: flex;
   gap: 8px;
 }
 
 .clear-button,
-.edit-button {
+.edit-button,
+.move-button {
   width: 38px;
   height: 38px;
   border: 1px solid var(--border);
   border-radius: 50%;
   background: transparent;
   font-weight: 900;
+}
+
+.move-button {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.move-button:hover {
+  background: var(--panel-soft);
+  border-color: var(--muted);
+  color: var(--text);
 }
 
 .clear-button {
@@ -499,6 +551,40 @@ textarea:focus {
   margin: 0;
 }
 
+.assigned-section {
+  margin-top: 28px;
+}
+
+.assigned-section-label {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.assigned-card {
+  grid-template-columns: 1fr;
+  opacity: 0.85;
+  cursor: default;
+}
+
+.assigned-card:hover {
+  transform: none;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+}
+
+.assigned-badge {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 .app-footer {
   display: flex;
   justify-content: center;
@@ -541,6 +627,40 @@ textarea:focus {
 #sign-out:hover {
   background: var(--accent-soft);
   border-color: var(--accent);
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  z-index: 100;
+  max-width: 90vw;
+}
+
+.toast.hidden {
+  display: none;
+}
+
+#toast-message {
+  color: var(--text);
+  font-size: 0.92rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#toast-action {
+  margin-top: 0;
+  flex-shrink: 0;
 }
 
 @media (max-width: 520px) {

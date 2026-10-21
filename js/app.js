@@ -5,7 +5,7 @@ import {
   linkCompanyEmail,
   signOutUser,
   watchAuth
-} from "../firebase/auth.js?v=1.5.0";
+} from "../firebase/auth.js?v=1.6.0";
 
 import {
   personalTasksCollection,
@@ -15,20 +15,33 @@ import {
   deleteTask as deleteCloudTask,
   updateTask as updateCloudTask,
   updateTaskOrder
-} from "../firebase/firestore.js?v=1.5.0";
+} from "../firebase/firestore.js?v=1.6.0";
 
-const APP_VERSION = "v1.5.0";
+const APP_VERSION = "v1.6.0";
 const COMPANY_EMAIL_DOMAIN = "barelyartificial.com";
+const COMPANY_MEMBERS = [
+  { email: "paul@barelyartificial.com", name: "Paul" },
+  { email: "stephen@barelyartificial.com", name: "Stephen" }
+];
+const CLEAR_UNDO_WINDOW_MS = 5000;
 
 const taskTitleInput = document.querySelector("#task-title");
 const taskNotesInput = document.querySelector("#task-notes");
 const toggleNotesButton = document.querySelector("#toggle-notes");
 const newPriorityPicker = document.querySelector("#new-priority-picker");
+const newAssigneePicker = document.querySelector("#new-assignee-picker");
 const addTaskButton = document.querySelector("#add-task");
 const taskList = document.querySelector("#task-list");
 const emptyState = document.querySelector("#empty-state");
 const prioritySummary = document.querySelector("#priority-summary");
 const prioritySummaryText = document.querySelector("#priority-summary-text");
+const assignedSection = document.querySelector("#assigned-section");
+const assignedList = document.querySelector("#assigned-list");
+const taskCountSpan = document.querySelector("#task-count");
+const taskCountSep = document.querySelector("#task-count-sep");
+const toast = document.querySelector("#toast");
+const toastMessage = document.querySelector("#toast-message");
+const toastAction = document.querySelector("#toast-action");
 const charCount = document.querySelector("#char-count");
 const signInButton = document.querySelector("#sign-in");
 const signOutButton = document.querySelector("#sign-out");
@@ -49,17 +62,80 @@ let tasks = [];
 let currentUser = null;
 let currentScope = "personal";
 let unsubscribeTasks = null;
+let unsubscribeAssignedTasks = null;
+let assignedToMeTasks = [];
 let draggedTaskId = null;
 let editingTaskId = null;
 let editDraftTitle = "";
 let editDraftNotes = "";
 let editDraftPriority = "blue";
+let editDraftAssignee = "";
 let editNotesOpen = false;
 let newTaskPriority = "blue";
+let newTaskAssignee = "";
+let pendingClearIds = new Set();
+let toastTimeoutId = null;
+let swipeState = null;
 
 function hasCompanyAccess(user) {
   if (!user || !user.email || !user.emailVerified) return false;
   return user.email.toLowerCase().endsWith(`@${COMPANY_EMAIL_DOMAIN}`);
+}
+
+function assigneeName(email) {
+  if (!email) return "";
+  const member = COMPANY_MEMBERS.find(
+    (candidate) => candidate.email.toLowerCase() === email.toLowerCase()
+  );
+  return member ? member.name : email;
+}
+
+function populateAssigneePicker(container, selected) {
+  const pills = [{ email: "", name: "Unassigned" }, ...COMPANY_MEMBERS];
+
+  container.innerHTML = pills
+    .map(
+      (member) => `
+        <button
+          class="assignee-pill${member.email === selected ? " selected" : ""}"
+          type="button"
+          data-assignee="${escapeHtml(member.email)}"
+        >${escapeHtml(member.name)}</button>
+      `
+    )
+    .join("");
+}
+
+function showToast(message, actionLabel, onAction) {
+  if (toastTimeoutId) {
+    clearTimeout(toastTimeoutId);
+    toastTimeoutId = null;
+  }
+
+  toastMessage.textContent = message;
+
+  if (actionLabel && onAction) {
+    toastAction.textContent = actionLabel;
+    toastAction.classList.remove("hidden");
+    toastAction.onclick = () => {
+      onAction();
+      hideToast();
+    };
+  } else {
+    toastAction.classList.add("hidden");
+    toastAction.onclick = null;
+  }
+
+  toast.classList.remove("hidden");
+  toastTimeoutId = setTimeout(hideToast, CLEAR_UNDO_WINDOW_MS);
+}
+
+function hideToast() {
+  toast.classList.add("hidden");
+  if (toastTimeoutId) {
+    clearTimeout(toastTimeoutId);
+    toastTimeoutId = null;
+  }
 }
 
 const EMAIL_AUTH_ERROR_MESSAGES = {
@@ -130,6 +206,28 @@ function subscribeToCurrentList() {
   });
 }
 
+function subscribeToAssignedTasks() {
+  if (unsubscribeAssignedTasks) {
+    unsubscribeAssignedTasks();
+    unsubscribeAssignedTasks = null;
+  }
+
+  if (currentScope !== "personal" || !hasCompanyAccess(currentUser)) {
+    assignedToMeTasks = [];
+    renderAssignedSection();
+    return;
+  }
+
+  const myEmail = currentUser.email.toLowerCase();
+
+  unsubscribeAssignedTasks = watchTasks(companyTasksCollection(), (companyTasks) => {
+    assignedToMeTasks = companyTasks.filter(
+      (task) => (task.assignedTo || "").toLowerCase() === myEmail
+    );
+    renderAssignedSection();
+  });
+}
+
 function setScope(scope) {
   if (scope === currentScope) return;
   if (scope === "company" && !hasCompanyAccess(currentUser)) return;
@@ -142,14 +240,20 @@ function setScope(scope) {
   listTabCompany.classList.toggle("active", scope === "company");
   listTabCompany.setAttribute("aria-selected", scope === "company");
 
+  newAssigneePicker.classList.toggle("hidden", scope !== "company");
+  setNewTaskAssignee("");
+
   subscribeToCurrentList();
+  subscribeToAssignedTasks();
 }
 
 function renderTasks() {
-  taskList.innerHTML = "";
-  emptyState.classList.toggle("hidden", tasks.length > 0);
+  const visibleTasks = tasks.filter((task) => !pendingClearIds.has(task.id));
 
-  tasks.forEach((task) => {
+  taskList.innerHTML = "";
+  emptyState.classList.toggle("hidden", visibleTasks.length > 0);
+
+  visibleTasks.forEach((task) => {
     const item = document.createElement("li");
     item.dataset.id = task.id;
 
@@ -162,7 +266,21 @@ function renderTasks() {
     taskList.appendChild(item);
   });
 
-  renderPrioritySummary();
+  renderPrioritySummary(visibleTasks);
+  updateTaskCount(visibleTasks);
+}
+
+function updateTaskCount(visibleTasks) {
+  if (visibleTasks.length === 0) {
+    taskCountSpan.classList.add("hidden");
+    taskCountSep.classList.add("hidden");
+    return;
+  }
+
+  taskCountSpan.textContent =
+    visibleTasks.length === 1 ? "1 thing to do" : `${visibleTasks.length} things to do`;
+  taskCountSpan.classList.remove("hidden");
+  taskCountSep.classList.remove("hidden");
 }
 
 function joinWithAnd(parts) {
@@ -223,29 +341,72 @@ function buildPrioritySummaryHtml(currentTasks) {
   return [leadSentence, blueSentence].filter(Boolean).join(" ");
 }
 
-function renderPrioritySummary() {
-  if (tasks.length === 0) {
+function renderPrioritySummary(visibleTasks) {
+  if (visibleTasks.length === 0) {
     prioritySummary.classList.add("hidden");
     prioritySummaryText.innerHTML = "";
     return;
   }
 
-  prioritySummaryText.innerHTML = buildPrioritySummaryHtml(tasks);
+  prioritySummaryText.innerHTML = buildPrioritySummaryHtml(visibleTasks);
   prioritySummary.classList.remove("hidden");
+}
+
+function renderAssignedSection() {
+  if (assignedToMeTasks.length === 0) {
+    assignedSection.classList.add("hidden");
+    assignedList.innerHTML = "";
+    return;
+  }
+
+  assignedList.innerHTML = "";
+
+  assignedToMeTasks.forEach((task) => {
+    const item = document.createElement("li");
+    item.className = "task-card assigned-card";
+    item.dataset.priority = task.priority || "blue";
+
+    item.innerHTML = `
+      <div class="task-content">
+        <span class="assigned-badge">From Company List</span>
+        <h2>${escapeHtml(task.title)}</h2>
+        ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ""}
+      </div>
+    `;
+
+    assignedList.appendChild(item);
+  });
+
+  assignedSection.classList.remove("hidden");
 }
 
 function renderReadOnlyCard(item, task) {
   item.className = "task-card";
   item.dataset.priority = task.priority || "blue";
+  item.tabIndex = 0;
+
+  const assigneeHtml =
+    currentScope === "company" && task.assignedTo
+      ? `<p class="task-assignee">With ${escapeHtml(assigneeName(task.assignedTo))}</p>`
+      : "";
+
+  const canMove = currentScope === "company" || hasCompanyAccess(currentUser);
+  const moveButtonHtml = canMove
+    ? `<button class="move-button" type="button" aria-label="${
+        currentScope === "company" ? "Move to My List" : "Move to Company List"
+      }">⇄</button>`
+    : "";
 
   item.innerHTML = `
     <span class="drag-handle" aria-hidden="true">⋮⋮</span>
     <div class="task-content">
       <h2>${escapeHtml(task.title)}</h2>
       ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ""}
+      ${assigneeHtml}
     </div>
     <div class="task-actions">
       <button class="edit-button" type="button" aria-label="Edit task">✎</button>
+      ${moveButtonHtml}
       <button class="clear-button" type="button" aria-label="Clear task">✓</button>
     </div>
   `;
@@ -264,6 +425,12 @@ function renderEditingCard(item) {
         <button class="priority-dot" type="button" data-priority="amber" aria-label="Medium priority"></button>
         <button class="priority-dot" type="button" data-priority="blue" aria-label="Default priority"></button>
       </div>
+
+      ${
+        currentScope === "company"
+          ? '<div class="edit-assignee-picker assignee-picker" role="radiogroup" aria-label="Assigned to"></div>'
+          : ""
+      }
 
       <div class="edit-toolbar">
         <button class="edit-toggle-notes text-button" type="button">
@@ -294,6 +461,11 @@ function renderEditingCard(item) {
   item.querySelectorAll(".priority-dot").forEach((dot) => {
     dot.classList.toggle("selected", dot.dataset.priority === editDraftPriority);
   });
+
+  const assigneePicker = item.querySelector(".edit-assignee-picker");
+  if (assigneePicker) {
+    populateAssigneePicker(assigneePicker, editDraftAssignee);
+  }
 }
 
 function enterEditMode(task) {
@@ -301,6 +473,7 @@ function enterEditMode(task) {
   editDraftTitle = task.title;
   editDraftNotes = task.notes || "";
   editDraftPriority = task.priority || "blue";
+  editDraftAssignee = task.assignedTo || "";
   editNotesOpen = Boolean(task.notes);
 
   renderTasks();
@@ -321,6 +494,7 @@ function exitEditMode() {
   editDraftTitle = "";
   editDraftNotes = "";
   editDraftPriority = "blue";
+  editDraftAssignee = "";
   editNotesOpen = false;
 
   renderTasks();
@@ -335,12 +509,18 @@ async function saveEditedTask() {
   const tasksRef = currentTasksRef();
   if (!tasksRef || !editingTaskId) return;
 
-  await updateCloudTask(tasksRef, editingTaskId, {
-    title,
-    notes,
-    priority: editDraftPriority
-  });
+  const updates = { title, notes, priority: editDraftPriority };
+  if (currentScope === "company") {
+    updates.assignedTo = editDraftAssignee;
+  }
+
+  await updateCloudTask(tasksRef, editingTaskId, updates);
   exitEditMode();
+}
+
+function setNewTaskAssignee(email) {
+  newTaskAssignee = email;
+  populateAssigneePicker(newAssigneePicker, email);
 }
 
 function setNewTaskPriority(priority) {
@@ -364,31 +544,71 @@ async function addTask() {
     return;
   }
 
-  await saveCloudTask(tasksRef, {
-    title,
-    notes,
-    priority: newTaskPriority
-  });
+  const payload = { title, notes, priority: newTaskPriority };
+  if (currentScope === "company") {
+    payload.assignedTo = newTaskAssignee;
+  }
+
+  await saveCloudTask(tasksRef, payload);
 
   taskTitleInput.value = "";
   taskNotesInput.value = "";
   charCount.textContent = "0 / 100";
   setNewTaskPriority("blue");
+  setNewTaskAssignee("");
   taskTitleInput.focus();
 }
 
-async function clearTask(id) {
+function clearTask(id) {
   const tasksRef = currentTasksRef();
   if (!tasksRef) return;
 
+  const task = tasks.find((candidate) => candidate.id === id);
+  if (!task) return;
+
   const item = taskList.querySelector(`[data-id="${id}"]`);
-  if (!item) return;
+  if (item) item.classList.add("clearing");
 
-  item.classList.add("clearing");
+  setTimeout(() => {
+    pendingClearIds.add(id);
+    renderTasks();
 
-  setTimeout(async () => {
-    await deleteCloudTask(tasksRef, id);
+    const timeoutId = setTimeout(() => {
+      pendingClearIds.delete(id);
+      deleteCloudTask(tasksRef, id);
+    }, CLEAR_UNDO_WINDOW_MS);
+
+    showToast(`Cleared "${task.title}"`, "Undo", () => {
+      clearTimeout(timeoutId);
+      pendingClearIds.delete(id);
+      renderTasks();
+    });
   }, 180);
+}
+
+async function moveTask(task) {
+  const sourceRef = currentTasksRef();
+  if (!sourceRef || !currentUser) return;
+
+  const destScope = currentScope === "company" ? "personal" : "company";
+  const destRef =
+    destScope === "company"
+      ? companyTasksCollection()
+      : personalTasksCollection(currentUser.uid);
+
+  const payload = {
+    title: task.title,
+    notes: task.notes || "",
+    priority: task.priority || "blue"
+  };
+  if (destScope === "company") {
+    payload.assignedTo = "";
+  }
+
+  await saveCloudTask(destRef, payload);
+  await deleteCloudTask(sourceRef, task.id);
+
+  showToast(destScope === "company" ? "Moved to Company List" : "Moved to My List");
 }
 
 function updateCharacterCount() {
@@ -473,9 +693,17 @@ function saveTaskOrderFromDom() {
     (item) => item.dataset.id
   );
 
-  tasks = orderedIds
+  const visibleOrdered = orderedIds
     .map((id) => tasks.find((task) => task.id === id))
     .filter(Boolean);
+
+  // Tasks mid-Undo-window aren't in the DOM (renderTasks filters them out),
+  // so they'd otherwise be silently dropped from `tasks` by a reorder that
+  // happens during their undo window - keep them, order doesn't matter
+  // since they're hidden and about to be deleted or restored.
+  const pendingHidden = tasks.filter((task) => pendingClearIds.has(task.id));
+
+  tasks = [...visibleOrdered, ...pendingHidden];
 }
 
 function escapeHtml(text) {
@@ -503,6 +731,13 @@ newPriorityPicker.addEventListener("click", (event) => {
   setNewTaskPriority(dot.dataset.priority);
 });
 
+newAssigneePicker.addEventListener("click", (event) => {
+  const pill = event.target.closest(".assignee-pill");
+  if (!pill) return;
+
+  setNewTaskAssignee(pill.dataset.assignee);
+});
+
 taskList.addEventListener("click", (event) => {
   const clearButton = event.target.closest(".clear-button");
   if (clearButton) {
@@ -519,6 +754,14 @@ taskList.addEventListener("click", (event) => {
     return;
   }
 
+  const moveButton = event.target.closest(".move-button");
+  if (moveButton) {
+    const item = moveButton.closest(".task-card");
+    const task = tasks.find((candidate) => candidate.id === item.dataset.id);
+    if (task) moveTask(task);
+    return;
+  }
+
   const saveEditButton = event.target.closest(".save-edit-button");
   if (saveEditButton) {
     saveEditedTask();
@@ -532,6 +775,17 @@ taskList.addEventListener("click", (event) => {
     const item = priorityDot.closest(".task-card");
     item?.querySelectorAll(".priority-dot").forEach((dot) => {
       dot.classList.toggle("selected", dot.dataset.priority === editDraftPriority);
+    });
+    return;
+  }
+
+  const assigneePill = event.target.closest(".edit-assignee-picker .assignee-pill");
+  if (assigneePill) {
+    editDraftAssignee = assigneePill.dataset.assignee;
+
+    const picker = assigneePill.closest(".edit-assignee-picker");
+    picker?.querySelectorAll(".assignee-pill").forEach((pill) => {
+      pill.classList.toggle("selected", pill.dataset.assignee === editDraftAssignee);
     });
     return;
   }
@@ -580,6 +834,105 @@ taskList.addEventListener("keydown", (event) => {
 
   event.preventDefault();
   saveEditedTask();
+});
+
+taskList.addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+
+  const card = event.target;
+  if (!card.classList?.contains("task-card") || card.classList.contains("editing")) return;
+
+  event.preventDefault();
+  reorderTaskByKeyboard(card.dataset.id, event.key === "ArrowUp" ? -1 : 1);
+});
+
+async function reorderTaskByKeyboard(id, direction) {
+  const index = tasks.findIndex((task) => task.id === id);
+  if (index === -1) return;
+
+  const newIndex = index + direction;
+  if (newIndex < 0 || newIndex >= tasks.length) return;
+
+  const reordered = [...tasks];
+  const [moved] = reordered.splice(index, 1);
+  reordered.splice(newIndex, 0, moved);
+  tasks = reordered;
+
+  renderTasks();
+  taskList.querySelector(`[data-id="${id}"]`)?.focus();
+
+  const tasksRef = currentTasksRef();
+  if (!tasksRef) return;
+  await updateTaskOrder(tasksRef, tasks);
+}
+
+const SWIPE_CLEAR_THRESHOLD = -80;
+
+taskList.addEventListener(
+  "touchstart",
+  (event) => {
+    const item = event.target.closest(".task-card");
+    if (!item || item.classList.contains("editing")) return;
+    if (event.target.closest(".drag-handle, button, input, textarea")) return;
+
+    const touch = event.touches[0];
+    swipeState = {
+      id: item.dataset.id,
+      element: item,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      deltaX: 0,
+      horizontal: null
+    };
+    item.style.transition = "none";
+  },
+  { passive: true }
+);
+
+taskList.addEventListener(
+  "touchmove",
+  (event) => {
+    if (!swipeState) return;
+
+    const touch = event.touches[0];
+    const deltaX = touch.clientX - swipeState.startX;
+    const deltaY = touch.clientY - swipeState.startY;
+
+    if (swipeState.horizontal === null) {
+      if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+        swipeState.horizontal = Math.abs(deltaX) > Math.abs(deltaY);
+      }
+    }
+
+    if (swipeState.horizontal === false) {
+      swipeState.element.style.transition = "";
+      swipeState = null;
+      return;
+    }
+
+    if (swipeState.horizontal) {
+      swipeState.deltaX = deltaX;
+      const clamped = Math.min(0, deltaX);
+      swipeState.element.style.transform = `translateX(${clamped}px)`;
+      swipeState.element.style.opacity = String(Math.max(0.3, 1 + clamped / 200));
+    }
+  },
+  { passive: true }
+);
+
+taskList.addEventListener("touchend", () => {
+  if (!swipeState) return;
+
+  const { element, deltaX, id } = swipeState;
+  swipeState = null;
+
+  element.style.transition = "";
+  element.style.transform = "";
+  element.style.opacity = "";
+
+  if (deltaX < SWIPE_CLEAR_THRESHOLD) {
+    clearTask(id);
+  }
 });
 
 if (window.Sortable) {
@@ -646,8 +999,11 @@ watchAuth((user) => {
     signOutButton.classList.add("hidden");
   }
 
+  newAssigneePicker.classList.toggle("hidden", currentScope !== "company");
+
   updateEmailAuthVisibility();
   subscribeToCurrentList();
+  subscribeToAssignedTasks();
 });
 
 toggleEmailAuthButton.addEventListener("click", () => {

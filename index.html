@@ -14,7 +14,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/png" href="images/favicon-32.png" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=1.5.0" />
+  <link rel="stylesheet" href="css/styles.css?v=1.6.0" />
 </head>
 <body>
   <main class="app-shell">
@@ -111,6 +111,8 @@
         <button class="priority-dot selected" type="button" data-priority="blue" aria-label="Default priority"></button>
       </div>
 
+      <div id="new-assignee-picker" class="assignee-picker hidden" role="radiogroup" aria-label="Assigned to"></div>
+
       <button id="toggle-notes" class="text-button" type="button">
         + Notes
       </button>
@@ -137,14 +139,26 @@
       </div>
     </section>
 
+    <section id="assigned-section" class="assigned-section hidden" aria-label="Assigned to you from the Company List">
+      <p class="assigned-section-label">From Company List</p>
+      <ul id="assigned-list" class="task-list assigned-list"></ul>
+    </section>
+
     <footer class="app-footer">
       <span>Barely Artificial</span>
       <span aria-hidden="true">•</span>
-      <span id="app-version">v1.5.0</span>
+      <span id="app-version">v1.6.0</span>
+      <span id="task-count-sep" aria-hidden="true" class="hidden">•</span>
+      <span id="task-count" class="hidden"></span>
     </footer>
   </main>
 
+  <div id="toast" class="toast hidden" role="status" aria-live="polite">
+    <span id="toast-message"></span>
+    <button id="toast-action" class="text-button hidden" type="button"></button>
+  </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-  <script type="module" src="js/app.js?v=1.5.0"></script>
+  <script type="module" src="js/app.js?v=1.6.0"></script>
 </body>
 </html>

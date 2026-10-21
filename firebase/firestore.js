@@ -9,7 +9,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
-import { app } from "./config.js?v=1.5.0";
+import { app } from "./config.js?v=1.6.0";
 
 export const db = getFirestore(app);
 
@@ -41,13 +41,19 @@ export function watchTasks(tasksRef, callback) {
 }
 
 export async function saveTask(tasksRef, task) {
-  await addDoc(tasksRef, {
+  const payload = {
     title: task.title,
     notes: task.notes,
     priority: task.priority || "blue",
     order: Date.now(),
     createdAt: serverTimestamp()
-  });
+  };
+
+  if (task.assignedTo !== undefined) {
+    payload.assignedTo = task.assignedTo;
+  }
+
+  await addDoc(tasksRef, payload);
 }
 
 export async function deleteTask(tasksRef, taskId) {
