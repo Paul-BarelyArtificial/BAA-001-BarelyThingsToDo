@@ -375,6 +375,53 @@ restore cycle against real signed-in data, same as most rounds — this
 one's particularly hard to verify quickly since the 30-day expiry can't
 be meaningfully fast-forwarded in testing.
 
+### v1.10.0 — Audit trail on notes 🔨
+Paul: *"I'd like an audit trail on the notes for an item so that you can
+add notes to an item without deleting the previous notes. This means that
+you can work on an item over a period of time and have a record of what
+you've done."* Notes are now a running log instead of a single
+overwritable string.
+- Data model: `notes` (string) replaced by `noteLog` (array of
+  `{ text, createdAt }`, oldest first) — `firebase/firestore.js`'s
+  `saveTask()` always writes `noteLog`. Legacy tasks with the old `notes`
+  string (everything created before this release) aren't migrated in
+  Firestore; `js/app.js`'s new `getNoteLog()` reads either shape
+  transparently, treating an old `notes` value as a single entry dated
+  "Before audit trail". The first edit that adds a new note on a legacy
+  task carries the old note forward as the log's first real entry and
+  writes the array going forward — a one-way, lazy migration, no backfill
+  script needed.
+- Editing a task: the inline edit card's Notes section now shows the full
+  history (date-stamped, oldest to newest, scrollable past a few entries)
+  above an always-empty "Add a note..." textarea — typing and saving
+  *appends* a new entry rather than overwriting the log, and saving with
+  nothing typed leaves the history untouched. Read-only cards (and the
+  Company List "From Company List" section, and the Archive modal) still
+  show only the latest note, same as before — the full history is only
+  surfaced where you'd actually act on it, in the edit view.
+- Plain-text export (`buildPlainTextExport`) now lists every note in a
+  task's history under its title, each tagged with its date (or "Before
+  audit trail" for the pre-migration entry) — previously only the single
+  current note.
+- Found and fixed a pre-existing, unrelated bug while in this code: the
+  Notes-toggle button on an editing card held a stale DOM reference after
+  `renderTasks()` rebuilt the list, so re-focusing the textarea after
+  opening Notes would silently no-op. Fixed by re-querying the fresh node
+  after re-render instead of reusing the pre-render one.
+Verified: a standalone logic test (legacy-task normalization, appending to
+a legacy task carries its old note forward, brand-new task starts empty,
+multi-entry ordering stays oldest-first, saving an empty note is a no-op,
+a task with neither field returns an empty log) — all passed. Visually
+confirmed via an injected mock editing card matching the real render
+output: three-entry history displays correctly (legacy entry labelled
+"Before audit trail", two dated entries), scrolls once it overflows, empty
+textarea sits below it; a mock read-only card confirmed it shows only the
+latest note, not the history. No console errors either way. Still 🔨
+pending: the real add-note → Save → Firestore → reopen cycle, and the
+legacy-note-migration-on-first-edit behaviour, against a real signed-in
+account and genuinely old data — same category of thing that's needed
+Paul's own sign-in to confirm every round so far.
+
 ## Backlog / ideas
 
 - **Daily email notification.** One notification only, by design: a daily

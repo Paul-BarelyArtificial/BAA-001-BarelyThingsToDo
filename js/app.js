@@ -5,7 +5,7 @@ import {
   linkCompanyEmail,
   signOutUser,
   watchAuth
-} from "../firebase/auth.js?v=1.9.0";
+} from "../firebase/auth.js?v=1.10.0";
 
 import {
   personalTasksCollection,
@@ -17,9 +17,9 @@ import {
   archiveTask as archiveCloudTask,
   restoreTask as restoreCloudTask,
   updateTaskOrder
-} from "../firebase/firestore.js?v=1.9.0";
+} from "../firebase/firestore.js?v=1.10.0";
 
-const APP_VERSION = "v1.9.0";
+const APP_VERSION = "v1.10.0";
 const COMPANY_EMAIL_DOMAIN = "barelyartificial.com";
 const COMPANY_MEMBERS = [
   { email: "paul@barelyartificial.com", name: "Paul" },
@@ -344,7 +344,7 @@ function renderTasks() {
     item.dataset.id = task.id;
 
     if (task.id === editingTaskId) {
-      renderEditingCard(item);
+      renderEditingCard(item, task);
     } else {
       renderReadOnlyCard(item, task);
     }
@@ -354,6 +354,27 @@ function renderTasks() {
 
   renderPrioritySummary(tasks);
   updateTaskCount(tasks);
+}
+
+function getNoteLog(task) {
+  if (Array.isArray(task.noteLog)) return task.noteLog;
+  if (task.notes) return [{ text: task.notes, createdAt: null }]; // pre-audit-trail legacy note
+  return [];
+}
+
+function latestNote(task) {
+  const log = getNoteLog(task);
+  return log.length > 0 ? log[log.length - 1].text : "";
+}
+
+function formatNoteDate(ms) {
+  if (!ms) return "Before audit trail";
+  return new Date(ms).toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 function formatArchivedLabel(archivedAtMs) {
@@ -387,10 +408,12 @@ function renderArchiveList() {
     item.dataset.id = task.id;
     item.dataset.priority = task.priority || "blue";
 
+    const noteText = latestNote(task);
+
     item.innerHTML = `
       <div class="task-content">
         <h2>${escapeHtml(task.title)}</h2>
-        ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ""}
+        ${noteText ? `<p>${escapeHtml(noteText)}</p>` : ""}
         <p class="archive-date">${formatArchivedLabel(task.archivedAt?.toMillis?.())}</p>
       </div>
       <button class="restore-button" type="button">Restore</button>
@@ -509,11 +532,13 @@ function renderAssignedSection() {
     item.className = "task-card assigned-card";
     item.dataset.priority = task.priority || "blue";
 
+    const noteText = latestNote(task);
+
     item.innerHTML = `
       <div class="task-content">
         <span class="assigned-badge">From Company List</span>
         <h2>${escapeHtml(task.title)}</h2>
-        ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ""}
+        ${noteText ? `<p>${escapeHtml(noteText)}</p>` : ""}
       </div>
     `;
 
@@ -540,11 +565,13 @@ function renderReadOnlyCard(item, task) {
       }">⇄</button>`
     : "";
 
+  const noteText = latestNote(task);
+
   item.innerHTML = `
     <span class="drag-handle" aria-hidden="true">⋮⋮</span>
     <div class="task-content">
       <h2>${escapeHtml(task.title)}</h2>
-      ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ""}
+      ${noteText ? `<p>${escapeHtml(noteText)}</p>` : ""}
       ${assigneeHtml}
     </div>
     <div class="task-actions">
@@ -555,7 +582,25 @@ function renderReadOnlyCard(item, task) {
   `;
 }
 
-function renderEditingCard(item) {
+function renderNoteLogHtml(task) {
+  const log = getNoteLog(task);
+  if (log.length === 0) return "";
+
+  const entries = log
+    .map(
+      (entry) => `
+        <div class="note-entry">
+          <p class="note-entry-date">${escapeHtml(formatNoteDate(entry.createdAt))}</p>
+          <p class="note-entry-text">${escapeHtml(entry.text)}</p>
+        </div>
+      `
+    )
+    .join("");
+
+  return `<div class="note-log">${entries}</div>`;
+}
+
+function renderEditingCard(item, task) {
   item.className = "task-card editing";
 
   item.innerHTML = `
@@ -582,11 +627,14 @@ function renderEditingCard(item) {
         <button class="cancel-edit-button text-button" type="button">Cancel</button>
       </div>
 
-      <textarea
-        class="edit-notes-input ${editNotesOpen ? "" : "hidden"}"
-        rows="3"
-        placeholder="Optional notes..."
-      ></textarea>
+      <div class="notes-section ${editNotesOpen ? "" : "hidden"}">
+        ${renderNoteLogHtml(task)}
+        <textarea
+          class="edit-notes-input"
+          rows="3"
+          placeholder="Add a note..."
+        ></textarea>
+      </div>
 
       <div class="edit-actions">
         <span class="edit-char-count">${editDraftTitle.length} / 100</span>
@@ -614,10 +662,10 @@ function renderEditingCard(item) {
 function enterEditMode(task) {
   editingTaskId = task.id;
   editDraftTitle = task.title;
-  editDraftNotes = task.notes || "";
+  editDraftNotes = ""; // the box is for adding a NEW note, not editing old ones
   editDraftPriority = task.priority || "blue";
   editDraftAssignee = task.assignedTo || "";
-  editNotesOpen = Boolean(task.notes);
+  editNotesOpen = getNoteLog(task).length > 0;
 
   renderTasks();
 
@@ -645,14 +693,20 @@ function exitEditMode() {
 
 async function saveEditedTask() {
   const title = editDraftTitle.trim();
-  const notes = editDraftNotes.trim();
+  const newNoteText = editDraftNotes.trim();
 
   if (!title) return;
 
   const tasksRef = currentTasksRef();
   if (!tasksRef || !editingTaskId) return;
 
-  const updates = { title, notes, priority: editDraftPriority };
+  const task = tasks.find((candidate) => candidate.id === editingTaskId);
+  const existingLog = task ? getNoteLog(task) : [];
+  const noteLog = newNoteText
+    ? [...existingLog, { text: newNoteText, createdAt: Date.now() }]
+    : existingLog;
+
+  const updates = { title, noteLog, priority: editDraftPriority };
   if (currentScope === "company") {
     updates.assignedTo = editDraftAssignee;
   }
@@ -676,7 +730,7 @@ function setNewTaskPriority(priority) {
 
 async function addTask() {
   const title = taskTitleInput.value.trim();
-  const notes = taskNotesInput.value.trim();
+  const noteText = taskNotesInput.value.trim();
 
   if (!title) return;
 
@@ -687,7 +741,8 @@ async function addTask() {
     return;
   }
 
-  const payload = { title, notes, priority: newTaskPriority };
+  const noteLog = noteText ? [{ text: noteText, createdAt: Date.now() }] : [];
+  const payload = { title, noteLog, priority: newTaskPriority };
   if (currentScope === "company") {
     payload.assignedTo = newTaskAssignee;
   }
@@ -726,7 +781,7 @@ async function moveTask(task) {
 
   const payload = {
     title: task.title,
-    notes: task.notes || "",
+    noteLog: getNoteLog(task),
     priority: task.priority || "blue"
   };
   if (destScope === "company") {
@@ -748,7 +803,15 @@ function buildPlainTextExport(visibleTasks, listLabel) {
 
   const lines = visibleTasks.map((task, index) => {
     const titleLine = `${index + 1}. ${task.title}`;
-    return task.notes ? `${titleLine}\n   ${task.notes}` : titleLine;
+    const log = getNoteLog(task);
+    if (log.length === 0) return titleLine;
+
+    const noteLines = log.map((entry) => {
+      const dateTag = entry.createdAt ? `[${formatNoteDate(entry.createdAt)}] ` : "";
+      return `   ${dateTag}${entry.text}`;
+    });
+
+    return [titleLine, ...noteLines].join("\n");
   });
 
   return [`${listLabel} — ${dateLabel}`, "", ...lines].join("\n");
@@ -950,13 +1013,14 @@ taskList.addEventListener("click", (event) => {
 
   const editToggleNotes = event.target.closest(".edit-toggle-notes");
   if (editToggleNotes) {
+    // Capture the id before renderTasks() rebuilds the DOM - afterwards
+    // this element and its ancestors are detached, so re-query fresh.
+    const taskId = editToggleNotes.closest(".task-card")?.dataset.id;
     editNotesOpen = !editNotesOpen;
     renderTasks();
 
-    const item = editToggleNotes.closest(".task-card");
-    const notesInput = item?.querySelector(".edit-notes-input");
-    if (notesInput && !notesInput.classList.contains("hidden")) {
-      notesInput.focus();
+    if (editNotesOpen && taskId) {
+      taskList.querySelector(`[data-id="${taskId}"] .edit-notes-input`)?.focus();
     }
   }
 });

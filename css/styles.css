@@ -587,6 +587,47 @@ textarea:focus {
   margin-top: 0;
 }
 
+.notes-section {
+  margin-top: 12px;
+}
+
+.note-log {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  max-height: 180px;
+  overflow-y: auto;
+  background: var(--panel-soft);
+  border-radius: 14px;
+}
+
+.note-entry + .note-entry {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.note-entry-date {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.note-entry-text {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.notes-section textarea {
+  margin-top: 0;
+}
+
 .edit-actions {
   display: flex;
   align-items: center;
