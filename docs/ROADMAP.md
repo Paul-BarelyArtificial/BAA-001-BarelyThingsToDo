@@ -283,7 +283,7 @@ checked mobile width. This is the first round where the actual visual
 change could be fully verified without needing a signed-in account, since
 none of it touches Firestore.
 
-### v1.8.0 — Offline-first PWA + plain-text export 🔨
+### v1.8.0 — Offline-first PWA + plain-text export ✅
 **Offline-first:** the app previously needed network for every Firestore
 read/write despite being installable. Rather than hand-building a custom
 local write-queue, enabled Firestore's own built-in offline support:
@@ -320,16 +320,17 @@ console errors; the plain-text builder logic confirmed via a standalone
 test (multi-item, single-item, notes mixed in, empty-list edge case);
 the Export button confirmed live end-to-end on the empty-list path
 (button → toast). Offline banner show logic confirmed by forcing it
-visible and checking the rendered state. **Not fully verified:** actual
-service worker *registration* — this local-dev-server preview
-environment blocks it outright (confirmed by testing a guaranteed-valid
-trivial service worker file, which failed identically; a real HTTPS site
-registered one successfully in the same browser pane, which rules out a
-pane-wide restriction and narrows it to something about this specific
-local-dev-server setup). Needs checking against the real deployed site —
-Chrome DevTools' Application tab, or an airplane-mode reload — once live.
-The populated-list clipboard-write export path also still needs a
-signed-in account with real tasks to exercise, same as most rounds.
+visible and checking the rendered state. Service worker *registration*
+couldn't be confirmed against the local-dev-server preview (it blocked
+registration outright — confirmed via a trivial guaranteed-valid test
+service worker failing identically there) but **is confirmed working
+against the real deployed site**: registered, reached `activated` state,
+and correctly populated the `barely-things-to-do-v1.8.0` cache with the
+full app shell (`index.html`, manifest, all icon images), no console
+errors. Still open: the populated-list clipboard-write export path needs
+a signed-in account with real tasks to exercise, same as most rounds, and
+genuinely offline behaviour (airplane mode, not just the dev-tools
+simulation) is worth a real check when convenient.
 
 ## Backlog / ideas
 
