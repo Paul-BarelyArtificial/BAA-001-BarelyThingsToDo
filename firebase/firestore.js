@@ -5,13 +5,14 @@ import {
   collection,
   addDoc,
   deleteDoc,
+  deleteField,
   doc,
   onSnapshot,
   updateDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
-import { app } from "./config.js?v=1.8.0";
+import { app } from "./config.js?v=1.9.0";
 
 // Persistent (IndexedDB-backed) local cache: reads work from cache while
 // offline, and writes queue locally and sync automatically once back
@@ -69,6 +70,14 @@ export async function saveTask(tasksRef, task) {
 
 export async function deleteTask(tasksRef, taskId) {
   await deleteDoc(doc(tasksRef, taskId));
+}
+
+export async function archiveTask(tasksRef, taskId) {
+  await updateDoc(doc(tasksRef, taskId), { archivedAt: serverTimestamp() });
+}
+
+export async function restoreTask(tasksRef, taskId) {
+  await updateDoc(doc(tasksRef, taskId), { archivedAt: deleteField() });
 }
 
 export async function updateTask(tasksRef, taskId, updates) {

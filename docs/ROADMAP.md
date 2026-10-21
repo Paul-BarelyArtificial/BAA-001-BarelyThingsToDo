@@ -209,14 +209,17 @@ Five backlog items in one round, all confirmed-shape or quick items.
   Company List to actually act on one. Own Firestore subscription,
   active only when viewing My List with company access.
 
-**Undo after clearing:** clearing a task now shows a toast ("Cleared
-'X' — Undo") instead of deleting immediately. The Firestore delete is
-delayed 5s behind the scenes; clicking Undo within that window cancels
-it and restores the task. Found and fixed a real bug while building
-this: `saveTaskOrderFromDom()` (used by drag-and-drop) rebuilt `tasks`
-purely from the current DOM order, which excludes anything mid-undo-
-window — a reorder during that window would have silently dropped the
-pending-clear task from memory, breaking Undo. Fixed to preserve it.
+**Undo after clearing** *(superseded in v1.9.0 — see below)*: clearing a
+task now shows a toast ("Cleared 'X' — Undo") instead of deleting
+immediately. The Firestore delete is delayed 5s behind the scenes;
+clicking Undo within that window cancels it and restores the task.
+Found and fixed a real bug while building this: `saveTaskOrderFromDom()`
+(used by drag-and-drop) rebuilt `tasks` purely from the current DOM
+order, which excludes anything mid-undo-window — a reorder during that
+window would have silently dropped the pending-clear task from memory,
+breaking Undo. Fixed to preserve it. v1.9.0 replaced this whole
+mechanism with 30-day Archive — this entry stays as the historical
+record of what shipped at the time.
 
 **Swipe-to-clear on mobile:** swiping a card left past a threshold
 triggers the same clear-with-undo flow. Custom touch handling (not
@@ -332,38 +335,47 @@ a signed-in account with real tasks to exercise, same as most rounds, and
 genuinely offline behaviour (airplane mode, not just the dev-tools
 simulation) is worth a real check when convenient.
 
-## Backlog / ideas
+### v1.9.0 — Archive completed tasks (30 days, restorable) 🔨
+Clearing a task (✓) now archives it instead of deleting it. Decided with
+Paul before building (2026-10-21):
+- The 5s Undo toast from v1.6.0 is **gone** — Archive replaces it
+  entirely as the one undo mechanism, rather than two overlapping ones.
+  Clearing is now a direct `archivedAt: serverTimestamp()` flag, no
+  pending-delete window.
+- 30-day expiry via **client-side cleanup**, not a Firestore TTL policy —
+  no Firebase console setup needed. Runs every time the current list's
+  snapshot updates (so, in practice, whenever anyone has the app open),
+  checking each archived task's `archivedAt` against
+  `ARCHIVE_EXPIRY_MS` and permanently deleting anything past it.
+- Data model: no copy/move at all — an archived task just stays in its
+  own collection (`users/{uid}/tasks` or
+  `companies/barely-artificial/tasks`), flagged with `archivedAt`.
+  "Restore to the original list" falls out for free since it never left;
+  `firebase/firestore.js` gained `archiveTask()`/`restoreTask()`
+  alongside the existing `deleteTask()`. Restored items reappear at
+  their old `order` value, which may now sit oddly among tasks that
+  moved while archived — an accepted minor quirk, not solved for.
+- Access point: an "Archive" link in the footer next to Export (not a
+  third tab, which would compete for visual priority for something used
+  rarely) opens a modal — scoped to whichever list is currently active,
+  closable via its Close button, clicking the backdrop, or Escape.
+  Each archived item shows title, notes, how long ago it was archived,
+  and a Restore button.
+- `showToast()` lost its now-unused action-button parameter (nothing
+  calls it with one anymore) — removed the dead `#toast-action` markup/
+  CSS along with it, rather than leaving unused plumbing in place.
+Verified live in the browser: Archive modal opens/closes all three ways
+(button, backdrop, Escape), correctly scoped to "My List" in its
+sublabel; populated-list layout (priority-colored outline, notes,
+archived-date, Restore button) confirmed via injected markup matching
+the real render output; clearing a task while signed out correctly no-ops
+with no error and no stray toast, confirming the old undo-toast path is
+really gone. Still 🔨 pending: the full archive → 30-day-window →
+restore cycle against real signed-in data, same as most rounds — this
+one's particularly hard to verify quickly since the 30-day expiry can't
+be meaningfully fast-forwarded in testing.
 
-- **Archive completed tasks for 30 days, restorable to their original
-  list.** Clearing a task (✓) would archive it instead of deleting it;
-  it sits in an Archive view for 30 days, can be restored back to
-  whichever list it was cleared from, and is permanently deleted after
-  that window.
-  - This **replaces** the clear flow shipped in v1.6.0 (toast + Undo +
-    permanent delete after 5s) with a much longer-lived undo — same
-    trigger (✓), different mechanism. Worth deciding explicitly whether
-    the 5s toast still shows too ("Archived — Undo") or whether Archive
-    makes it redundant.
-  - Simplest data model: no copy/move at all — an archived task stays in
-    its own collection (`users/{uid}/tasks` or
-    `companies/barely-artificial/tasks`), just flagged (`archivedAt`
-    timestamp). "Restore to the original list" falls out for free, since
-    it never left. Restored items reappear at their old `order` value,
-    which may now sit oddly among tasks that moved around while it was
-    archived — a minor, acceptable quirk rather than something to solve.
-  - The Archive view itself needs a access point — a third tab next to
-    My List/Company List would compete for visual priority for something
-    used rarely; a lighter-weight link (e.g. near the footer) is probably
-    a better fit for how seldom it'd be opened.
-  - The 30-day expiry needs *something* to actually delete expired
-    archived tasks. Two options: a Firestore TTL policy on `archivedAt`
-    (clean, but needs a one-time toggle in the Firebase console — same
-    category of manual step as enabling Email/Password sign-in was), or
-    client-side cleanup that deletes expired items opportunistically
-    whenever the app loads (no console setup, relies on someone opening
-    the app — fine for a 2-person app, but not instant on day 30).
-  Bigger item — needs the toast-vs-archive overlap and the expiry
-  mechanism decided before building, not just picked up as written.
+## Backlog / ideas
 
 - **Daily email notification.** One notification only, by design: a daily
   email with everything on the signed-in user's My List plus any Company

@@ -28,7 +28,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/png" href="images/favicon-32.png" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=1.8.0" />
+  <link rel="stylesheet" href="css/styles.css?v=1.9.0" />
 </head>
 <body>
   <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch theme"></button>
@@ -167,20 +167,40 @@
     <footer class="app-footer">
       <span>Barely Artificial</span>
       <span aria-hidden="true">•</span>
-      <span id="app-version">v1.8.0</span>
+      <span id="app-version">v1.9.0</span>
       <span id="task-count-sep" aria-hidden="true" class="hidden">•</span>
       <span id="task-count" class="hidden"></span>
       <span aria-hidden="true">•</span>
       <button id="export-list" class="footer-link" type="button">Export</button>
+      <span aria-hidden="true">•</span>
+      <button id="open-archive" class="footer-link" type="button">Archive</button>
     </footer>
   </main>
 
+  <div id="archive-modal" class="archive-modal hidden">
+    <div class="archive-modal-content" role="dialog" aria-label="Archive">
+      <div class="archive-modal-header">
+        <div>
+          <h2>Archive</h2>
+          <p id="archive-modal-label" class="archive-modal-sublabel"></p>
+        </div>
+        <button id="close-archive" class="text-button" type="button">Close</button>
+      </div>
+
+      <ul id="archive-list" class="task-list archive-list hidden"></ul>
+
+      <div id="archive-empty" class="empty-state">
+        <h2>Nothing archived</h2>
+        <p>Cleared tasks show up here for 30 days, then they're gone for good.</p>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden" role="status" aria-live="polite">
     <span id="toast-message"></span>
-    <button id="toast-action" class="text-button hidden" type="button"></button>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-  <script type="module" src="js/app.js?v=1.8.0"></script>
+  <script type="module" src="js/app.js?v=1.9.0"></script>
 </body>
 </html>

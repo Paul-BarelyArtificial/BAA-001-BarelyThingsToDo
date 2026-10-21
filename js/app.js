@@ -5,7 +5,7 @@ import {
   linkCompanyEmail,
   signOutUser,
   watchAuth
-} from "../firebase/auth.js?v=1.8.0";
+} from "../firebase/auth.js?v=1.9.0";
 
 import {
   personalTasksCollection,
@@ -14,16 +14,19 @@ import {
   saveTask as saveCloudTask,
   deleteTask as deleteCloudTask,
   updateTask as updateCloudTask,
+  archiveTask as archiveCloudTask,
+  restoreTask as restoreCloudTask,
   updateTaskOrder
-} from "../firebase/firestore.js?v=1.8.0";
+} from "../firebase/firestore.js?v=1.9.0";
 
-const APP_VERSION = "v1.8.0";
+const APP_VERSION = "v1.9.0";
 const COMPANY_EMAIL_DOMAIN = "barelyartificial.com";
 const COMPANY_MEMBERS = [
   { email: "paul@barelyartificial.com", name: "Paul" },
   { email: "stephen@barelyartificial.com", name: "Stephen" }
 ];
-const CLEAR_UNDO_WINDOW_MS = 5000;
+const ARCHIVE_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
+const TOAST_DURATION_MS = 5000;
 const THEME_STORAGE_KEY = "theme";
 
 const themeToggleButton = document.querySelector("#theme-toggle");
@@ -43,7 +46,6 @@ const taskCountSpan = document.querySelector("#task-count");
 const taskCountSep = document.querySelector("#task-count-sep");
 const toast = document.querySelector("#toast");
 const toastMessage = document.querySelector("#toast-message");
-const toastAction = document.querySelector("#toast-action");
 const charCount = document.querySelector("#char-count");
 const signInButton = document.querySelector("#sign-in");
 const signOutButton = document.querySelector("#sign-out");
@@ -61,6 +63,12 @@ const emailLinkButton = document.querySelector("#email-link");
 const emailAuthStatus = document.querySelector("#email-auth-status");
 const offlineBanner = document.querySelector("#offline-banner");
 const exportListButton = document.querySelector("#export-list");
+const openArchiveButton = document.querySelector("#open-archive");
+const archiveModal = document.querySelector("#archive-modal");
+const archiveModalLabel = document.querySelector("#archive-modal-label");
+const archiveList = document.querySelector("#archive-list");
+const archiveEmpty = document.querySelector("#archive-empty");
+const closeArchiveButton = document.querySelector("#close-archive");
 
 function getStoredTheme() {
   try {
@@ -134,6 +142,7 @@ if ("serviceWorker" in navigator) {
 }
 
 let tasks = [];
+let archivedTasks = [];
 let currentUser = null;
 let currentScope = "personal";
 let unsubscribeTasks = null;
@@ -148,7 +157,6 @@ let editDraftAssignee = "";
 let editNotesOpen = false;
 let newTaskPriority = "blue";
 let newTaskAssignee = "";
-let pendingClearIds = new Set();
 let toastTimeoutId = null;
 let swipeState = null;
 
@@ -181,28 +189,15 @@ function populateAssigneePicker(container, selected) {
     .join("");
 }
 
-function showToast(message, actionLabel, onAction) {
+function showToast(message) {
   if (toastTimeoutId) {
     clearTimeout(toastTimeoutId);
     toastTimeoutId = null;
   }
 
   toastMessage.textContent = message;
-
-  if (actionLabel && onAction) {
-    toastAction.textContent = actionLabel;
-    toastAction.classList.remove("hidden");
-    toastAction.onclick = () => {
-      onAction();
-      hideToast();
-    };
-  } else {
-    toastAction.classList.add("hidden");
-    toastAction.onclick = null;
-  }
-
   toast.classList.remove("hidden");
-  toastTimeoutId = setTimeout(hideToast, CLEAR_UNDO_WINDOW_MS);
+  toastTimeoutId = setTimeout(hideToast, TOAST_DURATION_MS);
 }
 
 function hideToast() {
@@ -266,18 +261,23 @@ function subscribeToCurrentList() {
   const tasksRef = currentTasksRef();
   if (!tasksRef) {
     tasks = [];
+    archivedTasks = [];
     renderTasks();
+    renderArchiveList();
     return;
   }
 
   unsubscribeTasks = watchTasks(tasksRef, (cloudTasks) => {
-    tasks = cloudTasks;
+    tasks = cloudTasks.filter((task) => !task.archivedAt);
+    archivedTasks = cloudTasks.filter((task) => task.archivedAt);
 
     if (editingTaskId && !tasks.some((task) => task.id === editingTaskId)) {
       exitEditMode();
     }
 
     renderTasks();
+    renderArchiveList();
+    cleanupExpiredArchivedTasks(tasksRef, archivedTasks);
   });
 }
 
@@ -297,9 +297,21 @@ function subscribeToAssignedTasks() {
 
   unsubscribeAssignedTasks = watchTasks(companyTasksCollection(), (companyTasks) => {
     assignedToMeTasks = companyTasks.filter(
-      (task) => (task.assignedTo || "").toLowerCase() === myEmail
+      (task) => !task.archivedAt && (task.assignedTo || "").toLowerCase() === myEmail
     );
     renderAssignedSection();
+  });
+}
+
+function cleanupExpiredArchivedTasks(tasksRef, archivedTasksList) {
+  const now = Date.now();
+
+  archivedTasksList.forEach((task) => {
+    const archivedAtMs = task.archivedAt?.toMillis?.();
+    if (!archivedAtMs) return; // not yet confirmed by the server - leave it
+    if (now - archivedAtMs > ARCHIVE_EXPIRY_MS) {
+      deleteCloudTask(tasksRef, task.id);
+    }
   });
 }
 
@@ -308,6 +320,7 @@ function setScope(scope) {
   if (scope === "company" && !hasCompanyAccess(currentUser)) return;
 
   exitEditMode();
+  closeArchive();
   currentScope = scope;
 
   listTabPersonal.classList.toggle("active", scope === "personal");
@@ -323,12 +336,10 @@ function setScope(scope) {
 }
 
 function renderTasks() {
-  const visibleTasks = tasks.filter((task) => !pendingClearIds.has(task.id));
-
   taskList.innerHTML = "";
-  emptyState.classList.toggle("hidden", visibleTasks.length > 0);
+  emptyState.classList.toggle("hidden", tasks.length > 0);
 
-  visibleTasks.forEach((task) => {
+  tasks.forEach((task) => {
     const item = document.createElement("li");
     item.dataset.id = task.id;
 
@@ -341,8 +352,65 @@ function renderTasks() {
     taskList.appendChild(item);
   });
 
-  renderPrioritySummary(visibleTasks);
-  updateTaskCount(visibleTasks);
+  renderPrioritySummary(tasks);
+  updateTaskCount(tasks);
+}
+
+function formatArchivedLabel(archivedAtMs) {
+  if (!archivedAtMs) return "Archived just now";
+
+  const days = Math.floor((Date.now() - archivedAtMs) / (24 * 60 * 60 * 1000));
+  if (days <= 0) return "Archived today";
+  if (days === 1) return "Archived 1 day ago";
+  return `Archived ${days} days ago`;
+}
+
+function renderArchiveList() {
+  if (archivedTasks.length === 0) {
+    archiveEmpty.classList.remove("hidden");
+    archiveList.classList.add("hidden");
+    archiveList.innerHTML = "";
+    return;
+  }
+
+  const sorted = [...archivedTasks].sort((a, b) => {
+    const aMs = a.archivedAt?.toMillis?.() ?? 0;
+    const bMs = b.archivedAt?.toMillis?.() ?? 0;
+    return bMs - aMs;
+  });
+
+  archiveList.innerHTML = "";
+
+  sorted.forEach((task) => {
+    const item = document.createElement("li");
+    item.className = "task-card archive-item";
+    item.dataset.id = task.id;
+    item.dataset.priority = task.priority || "blue";
+
+    item.innerHTML = `
+      <div class="task-content">
+        <h2>${escapeHtml(task.title)}</h2>
+        ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ""}
+        <p class="archive-date">${formatArchivedLabel(task.archivedAt?.toMillis?.())}</p>
+      </div>
+      <button class="restore-button" type="button">Restore</button>
+    `;
+
+    archiveList.appendChild(item);
+  });
+
+  archiveEmpty.classList.add("hidden");
+  archiveList.classList.remove("hidden");
+}
+
+function openArchive() {
+  archiveModalLabel.textContent = currentScope === "company" ? "Company List" : "My List";
+  renderArchiveList();
+  archiveModal.classList.remove("hidden");
+}
+
+function closeArchive() {
+  archiveModal.classList.add("hidden");
 }
 
 function updateTaskCount(visibleTasks) {
@@ -638,26 +706,11 @@ function clearTask(id) {
   const tasksRef = currentTasksRef();
   if (!tasksRef) return;
 
-  const task = tasks.find((candidate) => candidate.id === id);
-  if (!task) return;
-
   const item = taskList.querySelector(`[data-id="${id}"]`);
   if (item) item.classList.add("clearing");
 
   setTimeout(() => {
-    pendingClearIds.add(id);
-    renderTasks();
-
-    const timeoutId = setTimeout(() => {
-      pendingClearIds.delete(id);
-      deleteCloudTask(tasksRef, id);
-    }, CLEAR_UNDO_WINDOW_MS);
-
-    showToast(`Cleared "${task.title}"`, "Undo", () => {
-      clearTimeout(timeoutId);
-      pendingClearIds.delete(id);
-      renderTasks();
-    });
+    archiveCloudTask(tasksRef, id);
   }, 180);
 }
 
@@ -702,15 +755,13 @@ function buildPlainTextExport(visibleTasks, listLabel) {
 }
 
 async function exportList() {
-  const visibleTasks = tasks.filter((task) => !pendingClearIds.has(task.id));
-
-  if (visibleTasks.length === 0) {
+  if (tasks.length === 0) {
     showToast("Nothing to export yet");
     return;
   }
 
   const listLabel = currentScope === "company" ? "Company List" : "My List";
-  const text = buildPlainTextExport(visibleTasks, listLabel);
+  const text = buildPlainTextExport(tasks, listLabel);
 
   try {
     await navigator.clipboard.writeText(text);
@@ -802,17 +853,9 @@ function saveTaskOrderFromDom() {
     (item) => item.dataset.id
   );
 
-  const visibleOrdered = orderedIds
+  tasks = orderedIds
     .map((id) => tasks.find((task) => task.id === id))
     .filter(Boolean);
-
-  // Tasks mid-Undo-window aren't in the DOM (renderTasks filters them out),
-  // so they'd otherwise be silently dropped from `tasks` by a reorder that
-  // happens during their undo window - keep them, order doesn't matter
-  // since they're hidden and about to be deleted or restored.
-  const pendingHidden = tasks.filter((task) => pendingClearIds.has(task.id));
-
-  tasks = [...visibleOrdered, ...pendingHidden];
 }
 
 function escapeHtml(text) {
@@ -1066,6 +1109,30 @@ listTabCompany.addEventListener("click", () => setScope("company"));
 
 exportListButton.addEventListener("click", exportList);
 
+openArchiveButton.addEventListener("click", openArchive);
+closeArchiveButton.addEventListener("click", closeArchive);
+
+archiveModal.addEventListener("click", (event) => {
+  if (event.target === archiveModal) closeArchive();
+});
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !archiveModal.classList.contains("hidden")) {
+    closeArchive();
+  }
+});
+
+archiveList.addEventListener("click", (event) => {
+  const restoreButton = event.target.closest(".restore-button");
+  if (!restoreButton) return;
+
+  const item = restoreButton.closest(".archive-item");
+  const tasksRef = currentTasksRef();
+  if (!item || !tasksRef) return;
+
+  restoreCloudTask(tasksRef, item.dataset.id);
+});
+
 signInButton.addEventListener("click", async () => {
   try {
     await signInWithGoogle();
@@ -1090,6 +1157,7 @@ function resetToPersonalTab() {
 watchAuth((user) => {
   currentUser = user;
   exitEditMode();
+  closeArchive();
 
   if (user) {
     authStatus.textContent = `Hi ${user.displayName || user.email}`;
