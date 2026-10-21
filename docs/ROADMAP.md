@@ -396,18 +396,17 @@ simulation) is worth a real check when convenient.
     8am call happen by itself. Revisit the specific library once the
     scheduled-backend decision above is made.
 
-- **Top-priority summary paragraph — Phase 2 (AI-generated).** Long-term
-  item. Phase 1 (templated, no AI) shipped in v1.5.0 above. This phase
-  swaps the plain string-building for a true AI-generated summary (e.g.
-  via Claude). This needs an LLM call, and an API key can't live in
-  client-side JS on a static site — it requires a small backend to hold
-  the key securely. That's the app's first real backend requirement, and
-  is worth revisiting alongside the Cloudflare Worker question below and
-  the daily email notification backlog item — one backend decision, not
-  three separate ones — rather than bolting on a one-off serverless
-  function.
-
 ## Noted but deliberately deferred
+
+- **Top-priority summary paragraph — Phase 2 (AI-generated).** Phase 1
+  (templated, no AI) shipped in v1.5.0 and Paul's confirmed it's good
+  enough as-is (2026-10-21) — the AI-generated version isn't needed.
+  Would have swapped the plain string-building for a true AI-generated
+  summary (e.g. via Claude), which needs an LLM call and a backend to
+  hold the API key securely — the app's first real backend requirement,
+  same category as the daily email notification's sending side and the
+  Cloudflare Worker question. Revisit only if that reasoning changes, not
+  by default.
 
 - **Due dates, deadlines, and priority sorting/filtering** — deliberately
   out of scope, not just unbuilt. Position in the list, set by reordering,
