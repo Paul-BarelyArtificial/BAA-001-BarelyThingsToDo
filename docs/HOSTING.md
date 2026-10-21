@@ -8,6 +8,16 @@
 - Backend: **Firebase** — Authentication (Google sign-in) + Firestore
   (cloud task storage), called directly from the browser via the Firebase
   JS SDK (loaded from `gstatic.com`, see `firebase/config.js`).
+- Offline (v1.8.0 on): Firestore's own persistent (IndexedDB-backed) local
+  cache is enabled in `firebase/firestore.js` via `initializeFirestore()` +
+  `persistentLocalCache()` — reads work from cache offline, writes queue
+  locally and sync automatically when back online, no custom queue needed.
+  `sw.js` separately caches the static app shell (HTML/CSS/JS/images) via
+  the Cache API so the page itself can load with no network at all —
+  cache-first for `?v=`-versioned assets, network-first-with-cache-fallback
+  for everything else. Single-tab persistence only
+  (`persistentSingleTabManager()`) — opening the app in two tabs at once
+  isn't a supported case.
 
 ## Live URL
 **https://paul-barelyartificial.github.io/BAA-001-BarelyThingsToDo/**
@@ -64,6 +74,15 @@ together, not just the two in `index.html`:
 This is checked in the verification workflow (step 1) before every deploy,
 but is cheap enough to `grep -rn "v=1\."` the whole repo and confirm every
 match agrees.
+
+**`sw.js`'s `CACHE_NAME` is the same category of thing (v1.8.0 on).** The
+service worker caches the static app shell for offline use; it keeps
+serving whatever it cached under the old `CACHE_NAME` until that constant
+changes, since `self.addEventListener("activate", ...)` only deletes
+caches that don't match the *current* `CACHE_NAME` — meaning a release
+that forgets to bump it leaves offline users on the old app shell
+indefinitely, even though online users get the new one immediately. Bump
+it alongside everything else above.
 
 ## Local dev
 - Open `index.html` directly in a browser for simple UI-only testing (no

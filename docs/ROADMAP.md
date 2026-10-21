@@ -283,6 +283,54 @@ checked mobile width. This is the first round where the actual visual
 change could be fully verified without needing a signed-in account, since
 none of it touches Firestore.
 
+### v1.8.0 — Offline-first PWA + plain-text export 🔨
+**Offline-first:** the app previously needed network for every Firestore
+read/write despite being installable. Rather than hand-building a custom
+local write-queue, enabled Firestore's own built-in offline support:
+- `firebase/firestore.js` switched from `getFirestore(app)` to
+  `initializeFirestore(app, { localCache: persistentLocalCache({...}) })`
+  — reads now work from an IndexedDB-backed cache while offline, and
+  writes queue locally and sync automatically on reconnect, with no
+  custom queue code needed at all. Single-tab persistence only
+  (`persistentSingleTabManager()`), a deliberate simplification.
+- New `sw.js` separately caches the static app shell (HTML/CSS/JS/images)
+  via the Cache API, so the *page itself* can load with no network at
+  all — cache-first for `?v=`-versioned assets, network-first-with-
+  fallback for everything else. Only touches same-origin requests;
+  Firebase/gstatic calls pass straight through untouched.
+- An offline banner ("You're offline — changes will sync once you're back
+  online") shows/hides based on `navigator.onLine` + the `online`/
+  `offline` window events.
+- Updated `docs/HOSTING.md` and `AGENTS.md`'s definition of done: `sw.js`'s
+  `CACHE_NAME` is now part of the cache-busting checklist every release
+  has to bump together, same category of thing as the ES module imports
+  (missing it would leave offline users on a stale app shell forever,
+  quietly, same failure shape as the v1.3.1 bug).
+
+**Plain-text export:** an "Export" link in the footer copies the current
+list (whichever one's showing — My List or Company List), in order, as
+plain text to the clipboard — numbered, with any notes indented
+underneath, headed by the list name and today's date. Falls back to a
+`prompt()` with the text pre-filled if the Clipboard API is unavailable
+or denied. Reuses the existing toast system for the confirmation (or
+"Nothing to export yet" if the list's empty).
+
+Verified: `firebase/firestore.js`'s new initialization loads with no
+console errors; the plain-text builder logic confirmed via a standalone
+test (multi-item, single-item, notes mixed in, empty-list edge case);
+the Export button confirmed live end-to-end on the empty-list path
+(button → toast). Offline banner show logic confirmed by forcing it
+visible and checking the rendered state. **Not fully verified:** actual
+service worker *registration* — this local-dev-server preview
+environment blocks it outright (confirmed by testing a guaranteed-valid
+trivial service worker file, which failed identically; a real HTTPS site
+registered one successfully in the same browser pane, which rules out a
+pane-wide restriction and narrows it to something about this specific
+local-dev-server setup). Needs checking against the real deployed site —
+Chrome DevTools' Application tab, or an airplane-mode reload — once live.
+The populated-list clipboard-write export path also still needs a
+signed-in account with real tasks to exercise, same as most rounds.
+
 ## Backlog / ideas
 
 - **Archive completed tasks for 30 days, restorable to their original
@@ -346,14 +394,6 @@ none of it touches Firestore.
     library on its own only fires when called, it doesn't make a daily
     8am call happen by itself. Revisit the specific library once the
     scheduled-backend decision above is made.
-
-- **Offline-first PWA.** Currently installable but still needs network for
-  Firestore reads/writes; queue adds/reorders locally and sync when back
-  online so it's actually usable offline, not just installable.
-
-- **Plain-text export.** Dump the current list, in order, as text — useful
-  for sharing or backup without introducing any structure beyond what's
-  already there.
 
 - **Top-priority summary paragraph — Phase 2 (AI-generated).** Long-term
   item. Phase 1 (templated, no AI) shipped in v1.5.0 above. This phase

@@ -5,7 +5,7 @@ import {
   linkCompanyEmail,
   signOutUser,
   watchAuth
-} from "../firebase/auth.js?v=1.7.0";
+} from "../firebase/auth.js?v=1.8.0";
 
 import {
   personalTasksCollection,
@@ -15,9 +15,9 @@ import {
   deleteTask as deleteCloudTask,
   updateTask as updateCloudTask,
   updateTaskOrder
-} from "../firebase/firestore.js?v=1.7.0";
+} from "../firebase/firestore.js?v=1.8.0";
 
-const APP_VERSION = "v1.7.0";
+const APP_VERSION = "v1.8.0";
 const COMPANY_EMAIL_DOMAIN = "barelyartificial.com";
 const COMPANY_MEMBERS = [
   { email: "paul@barelyartificial.com", name: "Paul" },
@@ -59,6 +59,8 @@ const emailSignInButton = document.querySelector("#email-sign-in");
 const emailSignUpButton = document.querySelector("#email-sign-up");
 const emailLinkButton = document.querySelector("#email-link");
 const emailAuthStatus = document.querySelector("#email-auth-status");
+const offlineBanner = document.querySelector("#offline-banner");
+const exportListButton = document.querySelector("#export-list");
 
 function getStoredTheme() {
   try {
@@ -114,6 +116,22 @@ themeToggleButton.addEventListener("click", () => {
 });
 
 applyTheme(getStoredTheme());
+
+function updateOfflineBanner() {
+  offlineBanner.classList.toggle("hidden", navigator.onLine);
+}
+
+window.addEventListener("online", updateOfflineBanner);
+window.addEventListener("offline", updateOfflineBanner);
+updateOfflineBanner();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch((error) => {
+      console.warn("Service worker registration failed:", error);
+    });
+  });
+}
 
 let tasks = [];
 let currentUser = null;
@@ -668,6 +686,40 @@ async function moveTask(task) {
   showToast(destScope === "company" ? "Moved to Company List" : "Moved to My List");
 }
 
+function buildPlainTextExport(visibleTasks, listLabel) {
+  const dateLabel = new Date().toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+
+  const lines = visibleTasks.map((task, index) => {
+    const titleLine = `${index + 1}. ${task.title}`;
+    return task.notes ? `${titleLine}\n   ${task.notes}` : titleLine;
+  });
+
+  return [`${listLabel} — ${dateLabel}`, "", ...lines].join("\n");
+}
+
+async function exportList() {
+  const visibleTasks = tasks.filter((task) => !pendingClearIds.has(task.id));
+
+  if (visibleTasks.length === 0) {
+    showToast("Nothing to export yet");
+    return;
+  }
+
+  const listLabel = currentScope === "company" ? "Company List" : "My List";
+  const text = buildPlainTextExport(visibleTasks, listLabel);
+
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("Copied to clipboard");
+  } catch (error) {
+    window.prompt("Copy your list:", text);
+  }
+}
+
 function updateCharacterCount() {
   charCount.textContent = `${taskTitleInput.value.length} / 100`;
 }
@@ -1011,6 +1063,8 @@ if (window.Sortable) {
 
 listTabPersonal.addEventListener("click", () => setScope("personal"));
 listTabCompany.addEventListener("click", () => setScope("company"));
+
+exportListButton.addEventListener("click", exportList);
 
 signInButton.addEventListener("click", async () => {
   try {

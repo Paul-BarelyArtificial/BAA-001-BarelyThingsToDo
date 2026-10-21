@@ -33,10 +33,12 @@ There's no build/lint/type-check tooling here — "done" means:
 - Every cache-busting `?v=` query string bumped together — not just
   `index.html`'s `<script>`/`<link>` tags, but the internal ES module
   imports too (`js/app.js` → `firebase/auth.js`/`firebase/firestore.js` →
-  `firebase/config.js`). See `docs/HOSTING.md`'s Cache-busting section —
-  missing one of these breaks the whole app silently for any returning
-  visitor with a stale cache, with no error visible in the UI (this
-  happened for real going from v1.2.0 to v1.3.0, fixed in v1.3.1).
+  `firebase/config.js`), *and* `sw.js`'s `CACHE_NAME` (v1.8.0 on). See
+  `docs/HOSTING.md`'s Cache-busting section — missing one of the module
+  imports breaks the whole app silently for any returning visitor with a
+  stale cache, with no error visible in the UI (this happened for real
+  going from v1.2.0 to v1.3.0, fixed in v1.3.1); missing `sw.js`'s
+  `CACHE_NAME` leaves offline users on the old app shell indefinitely.
 
 ## Roadmap tracking
 Keep `docs/ROADMAP.md` with Shipped / Backlog / Deferred sections (see

@@ -28,7 +28,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/png" href="images/favicon-32.png" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=1.7.0" />
+  <link rel="stylesheet" href="css/styles.css?v=1.8.0" />
 </head>
 <body>
   <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch theme"></button>
@@ -84,6 +84,10 @@
         </div>
       </div>
     </header>
+
+    <p id="offline-banner" class="offline-banner hidden" role="status">
+      You're offline — changes will sync once you're back online.
+    </p>
 
     <div id="list-switcher" class="list-switcher" role="tablist" aria-label="Choose list">
       <button
@@ -163,9 +167,11 @@
     <footer class="app-footer">
       <span>Barely Artificial</span>
       <span aria-hidden="true">•</span>
-      <span id="app-version">v1.7.0</span>
+      <span id="app-version">v1.8.0</span>
       <span id="task-count-sep" aria-hidden="true" class="hidden">•</span>
       <span id="task-count" class="hidden"></span>
+      <span aria-hidden="true">•</span>
+      <button id="export-list" class="footer-link" type="button">Export</button>
     </footer>
   </main>
 
@@ -175,6 +181,6 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-  <script type="module" src="js/app.js?v=1.7.0"></script>
+  <script type="module" src="js/app.js?v=1.8.0"></script>
 </body>
 </html>

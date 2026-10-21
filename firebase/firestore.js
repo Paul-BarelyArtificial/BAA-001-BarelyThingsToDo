@@ -1,5 +1,7 @@
 import {
-  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentSingleTabManager,
   collection,
   addDoc,
   deleteDoc,
@@ -9,9 +11,18 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
-import { app } from "./config.js?v=1.7.0";
+import { app } from "./config.js?v=1.8.0";
 
-export const db = getFirestore(app);
+// Persistent (IndexedDB-backed) local cache: reads work from cache while
+// offline, and writes queue locally and sync automatically once back
+// online - no custom offline queue needed, the SDK already does this.
+// Single-tab manager: simplest option, fine for an app nobody expects to
+// have open in two tabs of the same browser at once.
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentSingleTabManager()
+  })
+});
 
 export const COMPANY_ID = "barely-artificial";
 
