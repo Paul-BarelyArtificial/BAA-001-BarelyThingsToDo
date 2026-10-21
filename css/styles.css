@@ -157,6 +157,17 @@ h1 {
   font-size: 1.05rem;
 }
 
+.dad-joke {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.dad-joke.hidden {
+  display: none;
+}
+
 .email-auth {
   margin-top: 14px;
 }

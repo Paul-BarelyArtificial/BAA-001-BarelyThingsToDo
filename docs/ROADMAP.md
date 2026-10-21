@@ -522,6 +522,29 @@ for his own address and confirming the email arrives and the link works
 — deliberately not tested with his real address as part of this
 verification, to avoid sending him an unplanned reset email mid-build.
 
+### v1.12.0 — Random dad joke on every page load ✅
+Paul wanted something fun at the top of the UI — genuinely random each
+time, not picked from a small hardcoded list. Fetches a joke live from
+[icanhazdadjoke.com](https://icanhazdadjoke.com) (`fetch` with an
+`Accept: application/json` header) — free, no API key, CORS-enabled, so
+no backend involvement needed. Shown in italics under the tagline.
+- Runs on every page load, not tied to sign-in state (Paul's own
+  correction after the first idea: auth persists across visits, so
+  "every time I log in" wouldn't actually fire often — "every page load"
+  is what he actually wanted).
+- No hardcoded fallback list on failure, by design (Paul's explicit
+  requirement was "not a hardcoded list") — if the request fails (offline,
+  API down, rate-limited), the joke line just stays hidden; logged to
+  `console.warn` only, no toast or visible error, consistent with how
+  the app already treats non-critical failures.
+- `sw.js` needed no changes — it already only intercepts same-origin
+  requests, so this cross-origin call passes straight through untouched,
+  same as Firebase/gstatic calls already do.
+Verified live against the real API (not mocked): confirmed a joke
+renders correctly on load, confirmed a second reload shows a genuinely
+different joke (actual randomness, not a cached/stuck value), no console
+errors either time.
+
 ## Noted but deliberately deferred
 
 - **Top-priority summary paragraph — Phase 2 (AI-generated).** Phase 1

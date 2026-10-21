@@ -18,6 +18,12 @@
   for everything else. Single-tab persistence only
   (`persistentSingleTabManager()`) — opening the app in two tabs at once
   isn't a supported case.
+- Dad joke (v1.12.0 on): a free call to
+  [icanhazdadjoke.com](https://icanhazdadjoke.com) on every page load
+  (`loadDadJoke()` in `js/app.js`) — no API key, CORS-enabled, no
+  backend involvement. `sw.js` doesn't need to know about it; it already
+  only intercepts same-origin requests. Fails silently (joke line just
+  stays hidden) if offline or the API is unavailable.
 
 ## Live URL
 **https://todo.barelyartificial.app**

@@ -6,7 +6,7 @@ import {
   resetPassword,
   signOutUser,
   watchAuth
-} from "../firebase/auth.js?v=1.11.0";
+} from "../firebase/auth.js?v=1.12.0";
 
 import {
   personalTasksCollection,
@@ -20,9 +20,9 @@ import {
   updateTaskOrder,
   watchUserProfile,
   setDailyNotifications
-} from "../firebase/firestore.js?v=1.11.0";
+} from "../firebase/firestore.js?v=1.12.0";
 
-const APP_VERSION = "v1.11.0";
+const APP_VERSION = "v1.12.0";
 const COMPANY_EMAIL_DOMAIN = "barelyartificial.com";
 const COMPANY_MEMBERS = [
   { email: "paul@barelyartificial.com", name: "Paul" },
@@ -73,6 +73,7 @@ const archiveModalLabel = document.querySelector("#archive-modal-label");
 const archiveList = document.querySelector("#archive-list");
 const archiveEmpty = document.querySelector("#archive-empty");
 const closeArchiveButton = document.querySelector("#close-archive");
+const dadJokeEl = document.querySelector("#dad-joke");
 const notificationSetting = document.querySelector("#notification-setting");
 const dailyNotificationsToggle = document.querySelector("#daily-notifications-toggle");
 
@@ -953,6 +954,25 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+async function loadDadJoke() {
+  try {
+    const response = await fetch("https://icanhazdadjoke.com/", {
+      headers: { Accept: "application/json" }
+    });
+    if (!response.ok) throw new Error(`icanhazdadjoke responded ${response.status}`);
+
+    const data = await response.json();
+    if (!data.joke) return;
+
+    dadJokeEl.textContent = data.joke;
+    dadJokeEl.classList.remove("hidden");
+  } catch (error) {
+    // No network, API down, offline, etc. - the joke line just stays
+    // hidden, same as it starts. Not worth bothering the user about.
+    console.warn("Could not load a dad joke:", error);
+  }
+}
+
 addTaskButton.addEventListener("click", addTask);
 taskTitleInput.addEventListener("input", updateCharacterCount);
 
@@ -1375,3 +1395,4 @@ if (appVersion) {
 
 renderTasks();
 taskTitleInput.focus();
+loadDadJoke();

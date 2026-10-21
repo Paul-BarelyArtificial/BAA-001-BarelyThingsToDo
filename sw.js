@@ -5,7 +5,7 @@
 // Bump CACHE_NAME on every release, same as the ?v= cache-busting
 // elsewhere (see docs/HOSTING.md's Cache-busting section) - otherwise
 // offline users keep the old app shell indefinitely.
-const CACHE_NAME = "barely-things-to-do-v1.11.0";
+const CACHE_NAME = "barely-things-to-do-v1.12.0";
 
 const APP_SHELL = [
   "./",
