@@ -6,7 +6,7 @@ import {
   resetPassword,
   signOutUser,
   watchAuth
-} from "../firebase/auth.js?v=1.12.0";
+} from "../firebase/auth.js?v=1.13.0";
 
 import {
   personalTasksCollection,
@@ -20,9 +20,9 @@ import {
   updateTaskOrder,
   watchUserProfile,
   setDailyNotifications
-} from "../firebase/firestore.js?v=1.12.0";
+} from "../firebase/firestore.js?v=1.13.0";
 
-const APP_VERSION = "v1.12.0";
+const APP_VERSION = "v1.13.0";
 const COMPANY_EMAIL_DOMAIN = "barelyartificial.com";
 const COMPANY_MEMBERS = [
   { email: "paul@barelyartificial.com", name: "Paul" },
@@ -168,6 +168,17 @@ let newTaskAssignee = "";
 let toastTimeoutId = null;
 let swipeState = null;
 
+// archivedAt is written as serverTimestamp(), which Firestore's local
+// cache resolves to `null` for the brief window between the optimistic
+// local write and the server confirming the real value - the key is
+// still present on the document either way, it's only ever absent for a
+// task that's never been archived. Checking presence (not truthiness)
+// means a task is treated as archived from the very first snapshot,
+// instead of flickering back into the active list for that one frame.
+function isArchived(task) {
+  return task.archivedAt !== undefined;
+}
+
 function hasCompanyAccess(user) {
   if (!user || !user.email || !user.emailVerified) return false;
   return user.email.toLowerCase().endsWith(`@${COMPANY_EMAIL_DOMAIN}`);
@@ -276,8 +287,8 @@ function subscribeToCurrentList() {
   }
 
   unsubscribeTasks = watchTasks(tasksRef, (cloudTasks) => {
-    tasks = cloudTasks.filter((task) => !task.archivedAt);
-    archivedTasks = cloudTasks.filter((task) => task.archivedAt);
+    tasks = cloudTasks.filter((task) => !isArchived(task));
+    archivedTasks = cloudTasks.filter(isArchived);
 
     if (editingTaskId && !tasks.some((task) => task.id === editingTaskId)) {
       exitEditMode();
@@ -305,7 +316,7 @@ function subscribeToAssignedTasks() {
 
   unsubscribeAssignedTasks = watchTasks(companyTasksCollection(), (companyTasks) => {
     assignedToMeTasks = companyTasks.filter(
-      (task) => !task.archivedAt && (task.assignedTo || "").toLowerCase() === myEmail
+      (task) => !isArchived(task) && (task.assignedTo || "").toLowerCase() === myEmail
     );
     renderAssignedSection();
   });

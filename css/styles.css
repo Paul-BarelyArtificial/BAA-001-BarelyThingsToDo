@@ -151,14 +151,8 @@ h1 {
   letter-spacing: -0.03em;
 }
 
-.tagline {
-  margin: 14px 0 0;
-  color: var(--muted);
-  font-size: 1.05rem;
-}
-
 .dad-joke {
-  margin: 10px 0 0;
+  margin: 14px 0 0;
   color: var(--muted);
   font-size: 0.9rem;
   font-style: italic;

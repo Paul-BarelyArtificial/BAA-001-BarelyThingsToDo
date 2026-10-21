@@ -527,7 +527,9 @@ Paul wanted something fun at the top of the UI — genuinely random each
 time, not picked from a small hardcoded list. Fetches a joke live from
 [icanhazdadjoke.com](https://icanhazdadjoke.com) (`fetch` with an
 `Accept: application/json` header) — free, no API key, CORS-enabled, so
-no backend involvement needed. Shown in italics under the tagline.
+no backend involvement needed. Shown in italics under the tagline
+*(tagline removed in v1.13.0 — see below; the joke now sits directly
+under the `<h1>`)*.
 - Runs on every page load, not tied to sign-in state (Paul's own
   correction after the first idea: auth persists across visits, so
   "every time I log in" wouldn't actually fire often — "every page load"
@@ -544,6 +546,49 @@ Verified live against the real API (not mocked): confirmed a joke
 renders correctly on load, confirmed a second reload shows a genuinely
 different joke (actual randomness, not a cached/stuck value), no console
 errors either time.
+
+### v1.13.0 — Fix: cleared tasks could flicker back into the list ✅
+Paul reported it directly: clicking the tick (✓) to clear a task
+sometimes left it in the list, needing a second click — and he could
+reliably reproduce a related visual glitch where the task fades out,
+briefly reappears, then finally disappears for good.
+
+Root cause: `archiveTask()` writes `archivedAt: serverTimestamp()`. With
+offline persistence enabled (since v1.8.0), Firestore's `onSnapshot`
+fires *twice* for that one write — immediately with the optimistic local
+version (where `archivedAt` is present but resolves to `null`, since the
+real server time isn't known yet), then again once the server confirms
+the real value. The list filter used `!task.archivedAt`, which treats
+that pending `null` the same as "never archived" — so for the brief
+window between those two snapshots, the task reappeared in the active
+list. If that second, corrected snapshot was ever slow to arrive, it
+would look stuck rather than just flickering.
+
+Fix: a new `isArchived(task)` helper checks whether the `archivedAt` key
+is *present* (`!== undefined`) rather than *truthy* — the key is only
+ever absent for a task that's never been archived; a pending write still
+has the key, just with a `null` value until the server resolves it.
+Applied everywhere a task's archived/active status is decided: the main
+list filter, the archived-list filter, and the "From Company List"
+assigned-tasks filter. The functions/ Cloud Function wasn't affected —
+it reads via the Admin SDK, which always returns server-resolved data,
+never an optimistic local snapshot.
+
+Also removed the "One thing at a time." tagline from under the title, at
+Paul's request — the dad joke (v1.12.0) now sits directly under the
+`<h1>` instead.
+
+Verified: a standalone logic test reproducing the exact two-snapshot
+sequence (pending-null, then server-confirmed) — confirmed the old
+`!task.archivedAt` check let the task reappear at the first snapshot
+(reproducing the reported bug exactly) and the new `isArchived()` check
+excludes it from the very first snapshot (no flicker window at all).
+Confirmed in the browser against the real rendering code path (not just
+the standalone logic) with injected snapshot data matching Firestore's
+actual pending-write shape. No console errors. Still open: watching the
+real signed-in flow (not simulated data) over a few clear actions to
+confirm the flicker is genuinely gone in practice, same category as
+other things needing Paul's own sign-in to fully confirm.
 
 ## Noted but deliberately deferred
 

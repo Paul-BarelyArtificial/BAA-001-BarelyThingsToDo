@@ -13,7 +13,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
-import { app } from "./config.js?v=1.12.0";
+import { app } from "./config.js?v=1.13.0";
 
 // Persistent (IndexedDB-backed) local cache: reads work from cache while
 // offline, and writes queue locally and sync automatically once back
